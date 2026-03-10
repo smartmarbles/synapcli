@@ -6,12 +6,12 @@ import { fetchAllFiles, fetchFileContent } from '../lib/github.js';
 import { readLocalFile, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 
-export async function diffCommand(name) {
+export async function diffCommand(name: string | undefined): Promise<void> {
   let config;
   try {
     config = loadConfig();
   } catch (err) {
-    fatal(err.message);
+    fatal((err as Error).message);
   }
 
   const { owner, repo } = parseRepoString(config.repo);
@@ -26,12 +26,10 @@ export async function diffCommand(name) {
     spinner.succeed('File list ready');
   } catch (err) {
     spinner.fail('Failed to fetch file list');
-    fatal(err.message);
+    fatal((err as Error).message);
   }
 
-  const targets = name
-    ? allFiles.filter((f) => f.path.includes(name))
-    : allFiles;
+  const targets = name ? allFiles.filter((f) => f.path.includes(name)) : allFiles;
 
   let changedCount = 0;
 
@@ -46,18 +44,15 @@ export async function diffCommand(name) {
     const lockedEntry = lock[file.path];
 
     // If SHA matches what we locked, skip fetching (no change)
-    if (lockedEntry && lockedEntry.sha === file.sha) {
-      continue;
-    }
+    if (lockedEntry && lockedEntry.sha === file.sha) continue;
 
-    // Fetch remote content for a real diff
     const fetching = ora(`Checking ${chalk.cyan(file.path)}…`).start();
-    let remoteContent;
+    let remoteContent: string;
     try {
       const result = await fetchFileContent({ owner, repo, path: file.path, ref });
       remoteContent = result.content;
       fetching.stop();
-    } catch (err) {
+    } catch {
       fetching.fail(`Could not fetch ${file.path}`);
       continue;
     }
@@ -68,9 +63,7 @@ export async function diffCommand(name) {
       continue;
     }
 
-    if (localContent === remoteContent) {
-      continue; // identical, nothing to show
-    }
+    if (localContent === remoteContent) continue;
 
     changedCount++;
     console.log();
@@ -79,18 +72,13 @@ export async function diffCommand(name) {
     console.log();
 
     const patch = createPatch(file.path, localContent, remoteContent, 'local', `remote@${ref}`);
-    const lines = patch.split('\n').slice(4); // strip the file header lines
+    const lines = patch.split('\n').slice(4); // strip file header lines
 
     for (const line of lines) {
-      if (line.startsWith('+')) {
-        process.stdout.write(chalk.green(line) + '\n');
-      } else if (line.startsWith('-')) {
-        process.stdout.write(chalk.red(line) + '\n');
-      } else if (line.startsWith('@@')) {
-        process.stdout.write(chalk.cyan(line) + '\n');
-      } else {
-        process.stdout.write(chalk.dim(line) + '\n');
-      }
+      if (line.startsWith('+'))       process.stdout.write(chalk.green(line) + '\n');
+      else if (line.startsWith('-'))  process.stdout.write(chalk.red(line) + '\n');
+      else if (line.startsWith('@@')) process.stdout.write(chalk.cyan(line) + '\n');
+      else                            process.stdout.write(chalk.dim(line) + '\n');
     }
   }
 

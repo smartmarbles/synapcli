@@ -5,13 +5,17 @@ import { loadConfig, parseRepoString, loadLock, saveLock } from '../lib/config.j
 import { fetchAllFiles, fetchFileContent } from '../lib/github.js';
 import { writeFile, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
+import type { UpdateOptions } from '../types.js';
 
-export async function updateCommand(name, options) {
+export async function updateCommand(
+  name: string | undefined,
+  options: UpdateOptions
+): Promise<void> {
   let config;
   try {
     config = loadConfig();
   } catch (err) {
-    fatal(err.message);
+    fatal((err as Error).message);
   }
 
   const { owner, repo } = parseRepoString(config.repo);
@@ -26,12 +30,10 @@ export async function updateCommand(name, options) {
     spinner.succeed(`Scanned ${chalk.bold(allFiles.length)} remote file(s)`);
   } catch (err) {
     spinner.fail('Failed to fetch file list');
-    fatal(err.message);
+    fatal((err as Error).message);
   }
 
-  const targets = name
-    ? allFiles.filter((f) => f.path.includes(name))
-    : allFiles;
+  const targets = name ? allFiles.filter((f) => f.path.includes(name)) : allFiles;
 
   // Identify files whose SHA has changed since last pull
   const changed = targets.filter((f) => {
@@ -48,23 +50,25 @@ export async function updateCommand(name, options) {
   console.log();
   for (const f of changed) {
     const wasNew = !lock[f.path];
-    console.log(`  ${chalk.green('•')} ${chalk.white(f.path)} ${wasNew ? chalk.dim('(new)') : chalk.yellow('(changed)')}`);
+    console.log(
+      `  ${chalk.green('•')} ${chalk.white(f.path)} ${wasNew ? chalk.dim('(new)') : chalk.yellow('(changed)')}`
+    );
   }
   console.log();
 
   if (!options.force) {
-    const confirm = await p.confirm({
+    const confirmed = await p.confirm({
       message: `Update ${changed.length} file(s)?`,
       initialValue: true,
     });
 
-    if (p.isCancel(confirm) || !confirm) {
+    if (p.isCancel(confirmed) || !confirmed) {
       p.cancel('Update cancelled.');
       process.exit(0);
     }
   }
 
-  const results = { written: [], failed: [] };
+  const results = { written: [] as string[], failed: [] as string[] };
 
   for (const file of changed) {
     const localPath = resolveLocalPath({
@@ -75,20 +79,14 @@ export async function updateCommand(name, options) {
 
     const fileSpinner = ora(`Updating ${chalk.cyan(file.path)}`).start();
     try {
-      const { content, sha } = await fetchFileContent({
-        owner,
-        repo,
-        path: file.path,
-        ref,
-      });
-
+      const { content, sha } = await fetchFileContent({ owner, repo, path: file.path, ref });
       writeFile(localPath, content);
       lock[file.path] = { sha, ref, pulledAt: new Date().toISOString() };
       fileSpinner.succeed(`${chalk.white(file.path)} → ${chalk.dim(localPath)}`);
       results.written.push(file.path);
     } catch (err) {
       fileSpinner.fail(`Failed: ${file.path}`);
-      log.error(err.message);
+      log.error((err as Error).message);
       results.failed.push(file.path);
     }
   }
@@ -97,5 +95,5 @@ export async function updateCommand(name, options) {
 
   console.log();
   if (results.written.length) log.success(`${results.written.length} file(s) updated`);
-  if (results.failed.length) log.error(`${results.failed.length} file(s) failed`);
+  if (results.failed.length)  log.error(`${results.failed.length} file(s) failed`);
 }

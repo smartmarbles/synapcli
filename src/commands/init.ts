@@ -3,9 +3,10 @@ import chalk from 'chalk';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { saveConfig, CONFIG_FILE, parseRepoString } from '../lib/config.js';
-import { log, fatal } from '../utils/logger.js';
+import { log } from '../utils/logger.js';
+import type { SynapConfig } from '../types.js';
 
-export async function initCommand() {
+export async function initCommand(): Promise<void> {
   p.intro(chalk.bold.cyan('  SynapCLI — Init  '));
 
   const configPath = join(process.cwd(), CONFIG_FILE);
@@ -26,7 +27,7 @@ export async function initCommand() {
         p.text({
           message: 'GitHub repository (owner/repo or full URL)',
           placeholder: 'acme/ai-agents',
-          validate: (val) => {
+          validate: (val: string) => {
             try {
               parseRepoString(val);
             } catch {
@@ -70,16 +71,14 @@ export async function initCommand() {
     }
   );
 
-  const { owner, repo } = parseRepoString(answers.repo);
+  const { owner, repo } = parseRepoString(answers.repo as string);
 
-  const config = {
+  const config: SynapConfig = {
     repo: `${owner}/${repo}`,
-    branch: answers.branch || 'main',
-    remotePath: answers.remotePath || '',
-    localOutput: answers.localOutput || 'src/agents',
-    ...(answers.privateRepo && {
-      auth: 'env:GITHUB_TOKEN',
-    }),
+    branch: (answers.branch as string) || 'main',
+    remotePath: (answers.remotePath as string) || '',
+    localOutput: (answers.localOutput as string) || 'src/agents',
+    ...(answers.privateRepo && { auth: 'env:GITHUB_TOKEN' }),
   };
 
   saveConfig(config);
@@ -87,8 +86,12 @@ export async function initCommand() {
   p.outro(chalk.green(`Created ${CONFIG_FILE}`));
 
   if (answers.privateRepo) {
-    log.info(`Set ${chalk.bold('GITHUB_TOKEN')} in your environment or a ${chalk.bold('.env')} file for private repo access.`);
+    log.info(
+      `Set ${chalk.bold('GITHUB_TOKEN')} in your environment or a ${chalk.bold('.env')} file for private repo access.`
+    );
   }
 
-  log.dim(`\nNext steps:\n  synap list        — browse available files\n  synap pull        — download everything\n  synap pull <name> — download a specific file\n`);
+  log.dim(
+    `\nNext steps:\n  synap list       — browse available files\n  synap pull       — download everything\n  synap pull <name> — download a specific file\n`
+  );
 }

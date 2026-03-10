@@ -1,24 +1,23 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import type { SynapConfig, LockFile, ParsedRepo } from '../types.js';
 
 export const CONFIG_FILE = 'synap.config.json';
-export const LOCK_FILE = 'synap.lock.json';
+export const LOCK_FILE   = 'synap.lock.json';
 
 /**
  * Load the project config file (synap.config.json).
  * Throws a friendly error if it doesn't exist.
  */
-export function loadConfig(cwd = process.cwd()) {
+export function loadConfig(cwd: string = process.cwd()): SynapConfig {
   const configPath = join(cwd, CONFIG_FILE);
 
   if (!existsSync(configPath)) {
-    throw new Error(
-      `No ${CONFIG_FILE} found. Run \`synap init\` to create one.`
-    );
+    throw new Error(`No ${CONFIG_FILE} found. Run \`synap init\` to create one.`);
   }
 
   try {
-    return JSON.parse(readFileSync(configPath, 'utf8'));
+    return JSON.parse(readFileSync(configPath, 'utf8')) as SynapConfig;
   } catch {
     throw new Error(`Failed to parse ${CONFIG_FILE}. Check it's valid JSON.`);
   }
@@ -27,7 +26,7 @@ export function loadConfig(cwd = process.cwd()) {
 /**
  * Write the project config file.
  */
-export function saveConfig(config, cwd = process.cwd()) {
+export function saveConfig(config: SynapConfig, cwd: string = process.cwd()): void {
   const configPath = join(cwd, CONFIG_FILE);
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
@@ -36,12 +35,12 @@ export function saveConfig(config, cwd = process.cwd()) {
  * Load the lockfile (synap.lock.json).
  * Returns an empty object if it doesn't exist yet.
  */
-export function loadLock(cwd = process.cwd()) {
+export function loadLock(cwd: string = process.cwd()): LockFile {
   const lockPath = join(cwd, LOCK_FILE);
   if (!existsSync(lockPath)) return {};
 
   try {
-    return JSON.parse(readFileSync(lockPath, 'utf8'));
+    return JSON.parse(readFileSync(lockPath, 'utf8')) as LockFile;
   } catch {
     return {};
   }
@@ -50,7 +49,7 @@ export function loadLock(cwd = process.cwd()) {
 /**
  * Write the lockfile.
  */
-export function saveLock(lock, cwd = process.cwd()) {
+export function saveLock(lock: LockFile, cwd: string = process.cwd()): void {
   const lockPath = join(cwd, LOCK_FILE);
   writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n', 'utf8');
 }
@@ -58,7 +57,7 @@ export function saveLock(lock, cwd = process.cwd()) {
 /**
  * Parse a GitHub repo URL or "owner/repo" shorthand into { owner, repo }.
  */
-export function parseRepoString(repo) {
+export function parseRepoString(repo: string): ParsedRepo {
   // Handle full GitHub URLs
   const urlMatch = repo.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
   if (urlMatch) {

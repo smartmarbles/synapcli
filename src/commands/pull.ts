@@ -5,17 +5,21 @@ import { loadConfig, parseRepoString, loadLock, saveLock } from '../lib/config.j
 import { fetchAllFiles, fetchFileContent } from '../lib/github.js';
 import { writeFile, readLocalFile, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
+import type { PullOptions } from '../types.js';
 
-export async function pullCommand(name, options) {
+export async function pullCommand(
+  name: string | undefined,
+  options: PullOptions
+): Promise<void> {
   let config;
   try {
     config = loadConfig();
   } catch (err) {
-    fatal(err.message);
+    fatal((err as Error).message);
   }
 
   const { owner, repo } = parseRepoString(config.repo);
-  const ref = options.branch || config.branch || 'main';
+  const ref = options.branch ?? config.branch ?? 'main';
   const remotePath = config.remotePath || '';
 
   // 1. Discover files
@@ -26,13 +30,11 @@ export async function pullCommand(name, options) {
     spinner.succeed(`Found ${chalk.bold(allFiles.length)} file(s)`);
   } catch (err) {
     spinner.fail('Failed to fetch file list');
-    fatal(err.message);
+    fatal((err as Error).message);
   }
 
   // 2. Filter by name if provided
-  const targets = name
-    ? allFiles.filter((f) => f.path.includes(name))
-    : allFiles;
+  const targets = name ? allFiles.filter((f) => f.path.includes(name)) : allFiles;
 
   if (targets.length === 0) {
     log.warn(name ? `No files matched "${name}"` : 'No files found at the configured path.');
@@ -57,7 +59,7 @@ export async function pullCommand(name, options) {
 
   // 3. Load lock file to detect conflicts
   const lock = loadLock();
-  const results = { written: [], skipped: [], failed: [] };
+  const results = { written: [] as string[], skipped: [] as string[], failed: [] as string[] };
 
   for (const file of targets) {
     const localPath = resolveLocalPath({
@@ -75,7 +77,7 @@ export async function pullCommand(name, options) {
         message: `${chalk.yellow(localPath)} exists and wasn't pulled by SynapCLI. Overwrite?`,
         options: [
           { value: 'overwrite', label: 'Overwrite' },
-          { value: 'skip', label: 'Skip' },
+          { value: 'skip',      label: 'Skip' },
         ],
       });
 
@@ -87,29 +89,22 @@ export async function pullCommand(name, options) {
 
     const fileSpinner = ora(`Pulling ${chalk.cyan(file.path)}`).start();
     try {
-      const { content, sha } = await fetchFileContent({
-        owner,
-        repo,
-        path: file.path,
-        ref,
-      });
-
+      const { content, sha } = await fetchFileContent({ owner, repo, path: file.path, ref });
       writeFile(localPath, content);
       lock[file.path] = { sha, ref, pulledAt: new Date().toISOString() };
       fileSpinner.succeed(`${chalk.white(file.path)} → ${chalk.dim(localPath)}`);
       results.written.push(file.path);
     } catch (err) {
       fileSpinner.fail(`Failed: ${file.path}`);
-      log.error(err.message);
+      log.error((err as Error).message);
       results.failed.push(file.path);
     }
   }
 
   saveLock(lock);
 
-  // Summary
   console.log();
-  if (results.written.length) log.success(`${results.written.length} file(s) written`);
-  if (results.skipped.length) log.warn(`${results.skipped.length} file(s) skipped`);
-  if (results.failed.length) log.error(`${results.failed.length} file(s) failed`);
+  if (results.written.length)  log.success(`${results.written.length} file(s) written`);
+  if (results.skipped.length)  log.warn(`${results.skipped.length} file(s) skipped`);
+  if (results.failed.length)   log.error(`${results.failed.length} file(s) failed`);
 }

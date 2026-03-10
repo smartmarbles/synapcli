@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 
-import 'dotenv/config';
 import { program } from 'commander';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-import { initCommand } from './commands/init.js';
-import { pullCommand } from './commands/pull.js';
-import { listCommand } from './commands/list.js';
-import { diffCommand } from './commands/diff.js';
+import { initCommand }   from './commands/init.js';
+import { pullCommand }   from './commands/pull.js';
+import { listCommand }   from './commands/list.js';
+import { diffCommand }   from './commands/diff.js';
 import { updateCommand } from './commands/update.js';
+import { deleteCommand } from './commands/delete.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8'));
+const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')) as { version: string };
 
 program
   .name('synap')
@@ -28,9 +28,9 @@ program
 program
   .command('pull [name]')
   .description('Fetch a specific agent/prompt by name, or all of them')
-  .option('-f, --force', 'Overwrite local files without prompting')
-  .option('-d, --dry-run', 'Preview what would be downloaded without writing files')
-  .option('--branch <branch>', 'Override the branch/tag/SHA to pull from')
+  .option('-f, --force',          'Overwrite local files without prompting')
+  .option('-d, --dry-run',        'Preview what would be downloaded without writing files')
+  .option('--branch <branch>',    'Override the branch/tag/SHA to pull from')
   .action(pullCommand);
 
 program
@@ -49,5 +49,12 @@ program
   .description('Pull only files that have changed upstream')
   .option('-f, --force', 'Skip confirmation prompts')
   .action(updateCommand);
+
+program
+  .command('delete [name]')
+  .description('Delete a tracked file (or all tracked files) from disk and remove from lock')
+  .option('-f, --force',   'Skip confirmation prompt')
+  .option('-d, --dry-run', 'Preview what would be deleted without removing anything')
+  .action(deleteCommand);
 
 program.parse();
