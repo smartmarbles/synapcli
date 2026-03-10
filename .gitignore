@@ -3,3 +3,5 @@ dist/
 .env
 *.log
 .github
+synap.config.json
+synap.lock.json
