@@ -1,12 +1,19 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
+import ora from 'ora';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { saveConfig, CONFIG_FILE, parseRepoString } from '../lib/config.js';
-import { log } from '../utils/logger.js';
-import type { SynapConfig } from '../types.js';
+import { validateToken, hasToken } from '../lib/github.js';
+import { log, fatal } from '../utils/logger.js';
+import { isCI } from '../utils/context.js';
+import { ExitCode, type SynapConfig } from '../types.js';
 
 export async function initCommand(): Promise<void> {
+  if (isCI()) {
+    fatal('synap init cannot run in --ci mode (requires interactive input).', ExitCode.ConfigError);
+  }
+
   p.intro(chalk.bold.cyan('  SynapCLI — Init  '));
 
   const configPath = join(process.cwd(), CONFIG_FILE);
@@ -28,11 +35,8 @@ export async function initCommand(): Promise<void> {
           message: 'GitHub repository (owner/repo or full URL)',
           placeholder: 'acme/ai-agents',
           validate: (val: string) => {
-            try {
-              parseRepoString(val);
-            } catch {
-              return 'Enter a valid "owner/repo" or GitHub URL';
-            }
+            try { parseRepoString(val); }
+            catch { return 'Enter a valid "owner/repo" or GitHub URL'; }
           },
         }),
 
@@ -75,23 +79,34 @@ export async function initCommand(): Promise<void> {
 
   const config: SynapConfig = {
     repo: `${owner}/${repo}`,
-    branch: (answers.branch as string) || 'main',
-    remotePath: (answers.remotePath as string) || '',
+    branch:      (answers.branch as string)      || 'main',
+    remotePath:  (answers.remotePath as string)  || '',
     localOutput: (answers.localOutput as string) || 'src/agents',
     ...(answers.privateRepo && { auth: 'env:GITHUB_TOKEN' }),
   };
 
-  saveConfig(config);
-
-  p.outro(chalk.green(`Created ${CONFIG_FILE}`));
-
-  if (answers.privateRepo) {
-    log.info(
-      `Set ${chalk.bold('GITHUB_TOKEN')} in your environment or a ${chalk.bold('.env')} file for private repo access.`
-    );
+  // ── Token validation ──────────────────────────────────────────────────────
+  if (hasToken()) {
+    const spinner = ora('Validating GitHub token…').start();
+    try {
+      const username = await validateToken();
+      spinner.succeed(`Token valid — authenticated as ${chalk.bold(username)}`);
+    } catch (err) {
+      spinner.fail('Token validation failed');
+      log.warn((err as Error).message);
+      log.warn('Continuing anyway — you can fix your token before running synap pull.');
+    }
+  } else if (answers.privateRepo) {
+	log.warn(
+	  `No GitHub token found. Either set ${chalk.bold('GITHUB_TOKEN')} as a session environment variable, ` +
+	  `or store it permanently with: ${chalk.white('git config --global synapcli.githubToken <token>')}`
+	);
   }
 
+  saveConfig(config);
+  p.outro(chalk.green(`Created ${CONFIG_FILE}`));
+
   log.dim(
-    `\nNext steps:\n  synap list       — browse available files\n  synap pull       — download everything\n  synap pull <name> — download a specific file\n`
+    `\nNext steps:\n  synap list       — browse available files\n  synap pull       — download everything\n  synap pull <n>   — download a specific file\n  synap doctor     — check your setup\n`
   );
 }

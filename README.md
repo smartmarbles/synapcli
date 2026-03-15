@@ -1,6 +1,6 @@
 # SynapCLI
 
-A CLI tool for pulling agent and prompt files from a GitHub repository into your JavaScript project.
+A professional CLI tool for pulling agent and prompt files from a GitHub repository into your JavaScript project. Supports multiple sources, glob filtering, lockfile-based diffing, CI/CD pipelines, and more.
 
 ---
 
@@ -13,10 +13,8 @@ A CLI tool for pulling agent and prompt files from a GitHub repository into your
 
 ## Installation
 
-Clone or download the project, then install dependencies and build:
-
 ```bash
-cd synapcli
+cd synapcli-v2
 npm install
 npm run build
 npm link
@@ -24,17 +22,22 @@ npm link
 
 `npm link` makes the `synap` command available globally in your terminal.
 
+**Or use via npx (once published to npm):**
+```bash
+npx synapcli <command>
+```
+
 ---
 
 ## Authentication
 
 ### Public repositories
-No setup needed. Requests are sent unauthenticated automatically.
+No setup needed. Requests are unauthenticated automatically.
 
 ### Private repositories
-SynapCLI looks for your GitHub token in two places, in this order:
+SynapCLI reads your GitHub token from two places, in order:
 
-**1. OS environment variable**
+**1. Session environment variable**
 ```bash
 # Mac/Linux
 export GITHUB_TOKEN=ghp_yourtoken
@@ -42,35 +45,33 @@ export GITHUB_TOKEN=ghp_yourtoken
 # Windows PowerShell
 $env:GITHUB_TOKEN="ghp_yourtoken"
 ```
+Note: this only persists for the current terminal session.
 
-**2. `~/.gitconfig` (recommended — persists across sessions)**
-
-Add the following to your global git config file (`C:\Users\YourName\.gitconfig` on Windows, `~/.gitconfig` on Mac/Linux):
-
-```ini
-[synapcli]
-    githubToken = ghp_yourtoken
-```
-
-Or run this command to set it automatically:
+**2. `~/.gitconfig` (recommended — persists permanently)**
 ```bash
 git config --global synapcli.githubToken ghp_yourtoken
 ```
 
-Generate a token at [github.com/settings/tokens](https://github.com/settings/tokens). For fine-grained tokens, make sure to grant **Contents: Read-only** permission on the target repository.
+Generate a token at [github.com/settings/tokens](https://github.com/settings/tokens). For fine-grained tokens, grant **Contents: Read-only** on the target repository.
 
 ---
 
 ## Quick Start
 
 ```bash
-# 1. Set up config in your project
+# 1. Bootstrap config
 synap init
 
-# 2. Browse available files in the remote repo
+# 2. Validate your setup
+synap doctor
+
+# 3. Browse available files
 synap list
 
-# 3. Pull everything down
+# 4. See what's changed vs what you have locally
+synap status
+
+# 5. Pull everything down
 synap pull
 ```
 
@@ -79,43 +80,60 @@ synap pull
 ## Commands
 
 ### `synap init`
+Interactively create a `synap.config.json`. Validates your GitHub token on setup.
 
-Interactively bootstrap a `synap.config.json` in the current directory. Walks you through setting the repo, branch, remote path, and local output directory.
+---
+
+### `synap doctor`
+Health check for your entire setup — Node version, git, token validity, repo access, and output directory permissions.
 
 ```bash
-synap init
+synap doctor
 ```
 
 ---
 
 ### `synap list`
-
 List all files available in the configured remote repository.
 
 ```bash
-synap list            # human-readable output with file sizes
-synap list --json     # raw JSON output for scripting
+synap list            # human-readable output
+synap list --json     # machine-readable JSON for scripting
 ```
 
 ---
 
-### `synap pull [name]`
-
-Download files from the remote repo into your local output directory. If a file already exists locally but wasn't pulled by SynapCLI, you will be prompted before it is overwritten.
+### `synap status`
+Show the sync status of every tracked file at a glance — similar to `git status`.
 
 ```bash
-synap pull                     # pull all files
-synap pull summarizer          # pull files matching "summarizer"
-synap pull --dry-run           # preview what would be downloaded
-synap pull --force             # overwrite all files without prompting
-synap pull --branch feat/v2    # pull from a specific branch, tag, or SHA
+synap status
+```
+
+Output groups files into four states:
+- **Changed upstream** — the remote file has a newer SHA than your local copy
+- **Missing locally** — was pulled before but the local file has been deleted
+- **Not yet pulled** — exists in the remote repo but hasn't been pulled yet
+- **Up to date** — local file matches the remote SHA exactly
+
+---
+
+### `synap pull [name]`
+Download files from the remote repo to your local output directory.
+
+```bash
+synap pull                      # pull all files
+synap pull summarizer           # pull files matching "summarizer"
+synap pull --dry-run            # preview without writing
+synap pull --force              # overwrite without prompting
+synap pull --branch feat/v2     # pull from a specific branch, tag, or SHA
+synap pull --retry-failed       # retry only files that failed in the last run
 ```
 
 ---
 
 ### `synap diff [name]`
-
-Show a colored diff of what has changed upstream versus your local files. Uses the lockfile to skip files that haven't changed, minimising API calls.
+Show a colored line-by-line diff of what has changed upstream versus your local files.
 
 ```bash
 synap diff             # diff all tracked files
@@ -125,8 +143,7 @@ synap diff summarizer  # diff files matching "summarizer"
 ---
 
 ### `synap update [name]`
-
-Pull only files that have changed upstream. Uses SHA comparison via the lockfile so unchanged files are skipped entirely.
+Pull only files whose upstream SHA has changed. Skips unchanged files entirely.
 
 ```bash
 synap update           # update all changed files
@@ -136,49 +153,80 @@ synap update --force   # skip confirmation prompt
 ---
 
 ### `synap delete [name]`
-
-Delete a tracked file (or all tracked files) from disk and remove the entry from the lockfile.
+Delete tracked files from disk and remove their entries from the lockfile.
 
 ```bash
-synap delete                   # delete all tracked files
-synap delete summarizer        # delete files matching "summarizer"
-synap delete --dry-run         # preview what would be deleted
-synap delete --force           # skip confirmation prompt
+synap delete                    # delete all tracked files
+synap delete summarizer         # delete files matching "summarizer"
+synap delete --dry-run          # preview without deleting
+synap delete --force            # skip confirmation prompt
 ```
 
 ---
 
 ## Configuration
 
-Running `synap init` creates a `synap.config.json` in your project root:
+`synap.config.json` supports both a simple single-source format and a multi-source format.
+
+### Single source (simple)
 
 ```json
 {
-  "repo": "owner/repo",
+  "repo": "acme/ai-agents",
   "branch": "main",
   "remotePath": "agents",
-  "localOutput": "src/agents",
-  "auth": "env:GITHUB_TOKEN"
+  "localOutput": "src/agents"
 }
 ```
+
+### Multiple sources
+
+```json
+{
+  "sources": [
+    {
+      "name": "Agents",
+      "repo": "acme/ai-agents",
+      "branch": "main",
+      "remotePath": "agents",
+      "localOutput": "src/agents",
+      "include": ["**/*.md"],
+      "exclude": ["**/test/**"]
+    },
+    {
+      "name": "Prompts",
+      "repo": "acme/prompt-library",
+      "branch": "main",
+      "remotePath": "prompts",
+      "localOutput": "src/prompts"
+    }
+  ],
+  "postpull": "prettier --write src/agents src/prompts"
+}
+```
+
+### Config reference
 
 | Field | Description |
 |---|---|
 | `repo` | GitHub repository as `owner/repo` |
-| `branch` | Branch, tag, or commit SHA to pull from (default: `main`) |
-| `remotePath` | Folder inside the repo to pull from (leave blank for repo root) |
+| `branch` | Branch, tag, or commit SHA (default: `main`) |
+| `remotePath` | Folder inside the repo to pull from (blank = repo root) |
 | `localOutput` | Local directory to write files into |
-| `auth` | Set to `"env:GITHUB_TOKEN"` for private repos |
+| `include` | Glob patterns — only matching files are pulled |
+| `exclude` | Glob patterns — matching files are skipped |
+| `postpull` | Shell command run automatically after any pull or update |
+| `sources` | Array of the above for multi-source projects |
 
 ---
 
 ## Lockfile
 
-After every pull, SynapCLI writes a `synap.lock.json` that records the exact commit SHA of each file:
+After every pull, SynapCLI writes `synap.lock.json` recording the exact commit SHA of each file. Keys are namespaced by repo to support multiple sources.
 
 ```json
 {
-  "agents/summarizer.md": {
+  "acme/ai-agents::agents/summarizer.md": {
     "sha": "a1b2c3d...",
     "ref": "main",
     "pulledAt": "2024-11-01T12:00:00.000Z"
@@ -186,49 +234,95 @@ After every pull, SynapCLI writes a `synap.lock.json` that records the exact com
 }
 ```
 
-Commit this file to version control. It ensures reproducible pulls and powers the `diff`, `update`, and `delete` commands.
+**Commit this file.** It ensures reproducible pulls and powers `status`, `diff`, `update`, and `delete`.
 
 ---
 
-## Project Structure
+## CI/CD
 
+Pass `--ci` to any command to enable CI mode:
+- No interactive prompts
+- Plain text output (no ANSI color codes)
+- Strict failures — conflicts exit with a non-zero code instead of prompting
+
+```bash
+synap pull --ci --force
+synap update --ci --force
 ```
-synapcli-ts/
-├── package.json
-├── tsconfig.json
-└── src/
-    ├── index.ts              # CLI entry point
-    ├── types.ts              # Shared TypeScript interfaces
-    ├── commands/
-    │   ├── init.ts           # synap init
-    │   ├── pull.ts           # synap pull
-    │   ├── list.ts           # synap list
-    │   ├── diff.ts           # synap diff
-    │   ├── update.ts         # synap update
-    │   └── delete.ts         # synap delete
-    ├── lib/
-    │   ├── github.ts         # GitHub API client
-    │   └── config.ts         # Config and lockfile read/write
-    └── utils/
-        ├── files.ts          # Local file operations
-        └── logger.ts         # Colored terminal output
-```
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | General error |
+| `2` | Config error (missing or invalid `synap.config.json`) |
+| `3` | Auth error (invalid or missing token) |
+| `4` | Network error (GitHub API unreachable or 404) |
+| `5` | Conflict error (file conflict in CI mode without `--force`) |
+
+### GitHub Actions example
+
+A ready-to-use workflow is included at `.github/workflows/sync-agents.yml`. Add your token as a repository secret named `SYNAP_GITHUB_TOKEN` and it will automatically sync on a daily schedule.
 
 ---
 
 ## Development
 
 ```bash
-# Run directly from TypeScript source (no build step needed)
+# Run directly from TypeScript source
 npx tsx src/index.ts <command>
-OR
-npx synap <command>
 
 # Build to dist/
 npm run build
 
-# After building, run via the linked global command
-synap <command>
+# Run tests
+npm test
+
+# Watch mode for tests
+npm run test:watch
+```
+
+---
+
+## Project Structure
+
+```
+synapcli-v2/
+├── package.json
+├── tsconfig.json
+├── vitest.config.ts
+├── .github/
+│   └── workflows/
+│       └── sync-agents.yml       # Ready-to-use CI workflow
+└── src/
+    ├── index.ts                  # CLI entry point
+    ├── types.ts                  # All shared TypeScript interfaces
+    ├── commands/
+    │   ├── init.ts               # synap init
+    │   ├── pull.ts               # synap pull
+    │   ├── list.ts               # synap list
+    │   ├── status.ts             # synap status
+    │   ├── diff.ts               # synap diff
+    │   ├── update.ts             # synap update
+    │   ├── delete.ts             # synap delete
+    │   └── doctor.ts             # synap doctor
+    ├── lib/
+    │   ├── github.ts             # GitHub API client (retry, rate limits)
+    │   ├── config.ts             # Config and lockfile read/write
+    │   ├── filter.ts             # Glob pattern filtering
+    │   ├── hooks.ts              # Post-pull hook runner
+    │   └── retry.ts              # Exponential backoff retry
+    ├── utils/
+    │   ├── files.ts              # Local file operations
+    │   ├── logger.ts             # CI-aware colored output
+    │   ├── progress.ts           # Progress bar (degrades in CI)
+    │   └── context.ts            # Global CI mode flag
+    └── tests/
+        ├── config.test.ts
+        ├── files.test.ts
+        ├── filter.test.ts
+        └── retry.test.ts
 ```
 
 ---

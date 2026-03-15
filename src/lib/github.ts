@@ -1,8 +1,14 @@
-import fetch from 'node-fetch';
+import fetch, { type Response } from 'node-fetch';
 import { execSync } from 'child_process';
+import { withRetry, sleep } from '../lib/retry.js';
+import { log } from '../utils/logger.js';
+import { ExitCode } from '../types.js';
 import type { RemoteFile, FetchedFile, RepoParams } from '../types.js';
 
 const GITHUB_API = 'https://api.github.com';
+
+// Warn when fewer than this many requests remain before reset
+const RATE_LIMIT_WARN_THRESHOLD = 10;
 
 interface GitHubErrorBody {
   message?: string;
@@ -18,28 +24,25 @@ interface GitHubFileResponse {
   download_url?: string;
 }
 
+// ─── Token ────────────────────────────────────────────────────────────────────
+
 function getToken(): string | undefined {
-  // 1. Try OS environment variable first
+  // 1. OS environment variable
   if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
 
-  // 2. Fall back to ~/.gitconfig via git CLI
+  // 2. ~/.gitconfig [synapcli] githubToken
   try {
     const token = execSync('git config --global synapcli.githubToken', {
       encoding: 'utf8',
     }).trim();
     if (token) return token;
   } catch {
-    // key not set in .gitconfig, ignore
+    // not configured — fine for public repos
   }
 
   return undefined;
 }
 
-/**
- * Build headers for GitHub API requests.
- * Reads token from OS env or ~/.gitconfig [synapcli] githubToken.
- * If no token is found, requests are sent unauthenticated (public repos only).
- */
 function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
@@ -52,9 +55,38 @@ function buildHeaders(): Record<string, string> {
   return headers;
 }
 
-/**
- * List the contents of a directory in a GitHub repo.
- */
+// ─── Rate limit ───────────────────────────────────────────────────────────────
+
+async function handleRateLimit(res: Response): Promise<void> {
+  const remaining = parseInt(res.headers.get('X-RateLimit-Remaining') ?? '60', 10);
+  const resetAt   = parseInt(res.headers.get('X-RateLimit-Reset')     ?? '0',  10) * 1000;
+
+  if (remaining === 0) {
+    const waitMs = Math.max(resetAt - Date.now(), 0) + 1000;
+    log.warn(`GitHub rate limit reached. Waiting ${Math.ceil(waitMs / 1000)}s for reset...`);
+    await sleep(waitMs);
+    return;
+  }
+
+  if (remaining < RATE_LIMIT_WARN_THRESHOLD) {
+    log.warn(`GitHub rate limit low: ${remaining} requests remaining.`);
+  }
+}
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
+
+async function githubFetch(url: string): Promise<Response> {
+  return withRetry(
+    async () => {
+      const res = await fetch(url, { headers: buildHeaders() });
+      await handleRateLimit(res);
+      return res;
+    },
+    3,
+    (attempt, err) => log.warn(`Request failed (attempt ${attempt}/3): ${err.message} — retrying...`)
+  );
+}
+
 export async function listRepoContents({
   owner,
   repo,
@@ -63,20 +95,25 @@ export async function listRepoContents({
 }: RepoParams): Promise<GitHubFileResponse[]> {
   const refParam = ref ? `?ref=${ref}` : '';
   const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}${refParam}`;
-  const res = await fetch(url, { headers: buildHeaders() });
+  const res = await githubFetch(url);
+
+  if (res.status === 401 || res.status === 403) {
+    const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
+    const msg = `GitHub auth error ${res.status}: ${err.message ?? res.statusText}. Check your token has "Contents: Read-only" permission.`;
+    throw Object.assign(new Error(msg), { exitCode: ExitCode.AuthError });
+  }
 
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
-    throw new Error(`GitHub API error ${res.status}: ${err.message ?? res.statusText}`);
+    throw Object.assign(
+      new Error(`GitHub API error ${res.status}: ${err.message ?? res.statusText}`),
+      { exitCode: ExitCode.NetworkError }
+    );
   }
 
   return res.json() as Promise<GitHubFileResponse[]>;
 }
 
-/**
- * Fetch the raw content of a single file from a GitHub repo.
- * Returns the decoded UTF-8 content, SHA, size, and download URL.
- */
 export async function fetchFileContent({
   owner,
   repo,
@@ -85,7 +122,7 @@ export async function fetchFileContent({
 }: RepoParams): Promise<FetchedFile> {
   const refParam = ref ? `?ref=${ref}` : '';
   const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}${refParam}`;
-  const res = await fetch(url, { headers: buildHeaders() });
+  const res = await githubFetch(url);
 
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
@@ -106,10 +143,6 @@ export async function fetchFileContent({
   };
 }
 
-/**
- * Recursively fetch all files under a given repo path.
- * Returns a flat array of RemoteFile objects.
- */
 export async function fetchAllFiles({
   owner,
   repo,
@@ -129,4 +162,32 @@ export async function fetchAllFiles({
   }
 
   return files;
+}
+
+/**
+ * Validate that a token is working by calling GET /user.
+ * Returns the authenticated username, or throws on failure.
+ */
+export async function validateToken(): Promise<string> {
+  const res = await fetch(`${GITHUB_API}/user`, { headers: buildHeaders() });
+
+  if (res.status === 401) {
+    throw Object.assign(
+      new Error('Token is invalid or expired.'),
+      { exitCode: ExitCode.AuthError }
+    );
+  }
+  if (!res.ok) {
+    throw new Error(`GitHub API error ${res.status}: ${res.statusText}`);
+  }
+
+  const data = (await res.json()) as { login: string };
+  return data.login;
+}
+
+/**
+ * Check if a token is configured (env or gitconfig).
+ */
+export function hasToken(): boolean {
+  return getToken() !== undefined;
 }

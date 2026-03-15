@@ -1,0 +1,36 @@
+name: Sync Agents
+
+on:
+  schedule:
+    # Runs every day at 08:00 UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install SynapCLI
+        run: npm install -g synapcli
+
+      - name: Pull latest agents and prompts
+        env:
+          GITHUB_TOKEN: ${{ secrets.SYNAP_GITHUB_TOKEN }}
+        run: synap pull --ci --force
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "chore: sync agents from upstream [skip ci]"
+          git push

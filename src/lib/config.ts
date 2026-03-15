@@ -1,14 +1,13 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { SynapConfig, LockFile, ParsedRepo } from '../types.js';
+import type { SynapConfig, LockFile, ParsedRepo, SourceConfig } from '../types.js';
 
 export const CONFIG_FILE = 'synap.config.json';
 export const LOCK_FILE   = 'synap.lock.json';
 
-/**
- * Load the project config file (synap.config.json).
- * Throws a friendly error if it doesn't exist.
- */
+// Lock key separator — chosen to be safe in file paths
+const LOCK_SEP = '::';
+
 export function loadConfig(cwd: string = process.cwd()): SynapConfig {
   const configPath = join(cwd, CONFIG_FILE);
 
@@ -23,18 +22,11 @@ export function loadConfig(cwd: string = process.cwd()): SynapConfig {
   }
 }
 
-/**
- * Write the project config file.
- */
 export function saveConfig(config: SynapConfig, cwd: string = process.cwd()): void {
   const configPath = join(cwd, CONFIG_FILE);
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
 
-/**
- * Load the lockfile (synap.lock.json).
- * Returns an empty object if it doesn't exist yet.
- */
 export function loadLock(cwd: string = process.cwd()): LockFile {
   const lockPath = join(cwd, LOCK_FILE);
   if (!existsSync(lockPath)) return {};
@@ -46,25 +38,57 @@ export function loadLock(cwd: string = process.cwd()): LockFile {
   }
 }
 
-/**
- * Write the lockfile.
- */
 export function saveLock(lock: LockFile, cwd: string = process.cwd()): void {
   const lockPath = join(cwd, LOCK_FILE);
   writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n', 'utf8');
 }
 
 /**
+ * Build a namespaced lock key for a given repo and file path.
+ * Format: "owner/repo::path/to/file"
+ */
+export function lockKey(repo: string, filePath: string): string {
+  return `${repo}${LOCK_SEP}${filePath}`;
+}
+
+/**
+ * Normalise a config into a consistent array of SourceConfig objects.
+ * Supports both the legacy single-source format and the new multi-source format.
+ */
+export function resolvedSources(config: SynapConfig): SourceConfig[] {
+  if (config.sources && config.sources.length > 0) {
+    return config.sources;
+  }
+
+  // Legacy single-source fallback
+  if (config.repo) {
+    return [
+      {
+        name: config.repo,
+        repo: config.repo,
+        branch: config.branch ?? 'main',
+        remotePath: config.remotePath ?? '',
+        localOutput: config.localOutput ?? 'src/agents',
+        include: undefined,
+        exclude: undefined,
+      },
+    ];
+  }
+
+  throw new Error(
+    `${CONFIG_FILE} must contain either a "repo" field or a "sources" array.`
+  );
+}
+
+/**
  * Parse a GitHub repo URL or "owner/repo" shorthand into { owner, repo }.
  */
 export function parseRepoString(repo: string): ParsedRepo {
-  // Handle full GitHub URLs
   const urlMatch = repo.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
   if (urlMatch) {
     return { owner: urlMatch[1], repo: urlMatch[2] };
   }
 
-  // Handle "owner/repo" shorthand
   const parts = repo.split('/');
   if (parts.length === 2 && parts[0] && parts[1]) {
     return { owner: parts[0], repo: parts[1] };

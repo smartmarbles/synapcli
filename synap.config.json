@@ -1,0 +1,7 @@
+{
+  "repo": "smartmarbles/synaplib",
+  "branch": "main",
+  "remotePath": ".github",
+  "localOutput": ".github",
+  "auth": "env:GITHUB_TOKEN"
+}

@@ -2,6 +2,3 @@ node_modules/
 dist/
 .env
 *.log
-.github
-synap.lock.json
-synap.config.json

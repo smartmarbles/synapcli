@@ -4,6 +4,7 @@ import { program } from 'commander';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { setCI } from './utils/context.js';
 
 import { initCommand }   from './commands/init.js';
 import { pullCommand }   from './commands/pull.js';
@@ -11,14 +12,27 @@ import { listCommand }   from './commands/list.js';
 import { diffCommand }   from './commands/diff.js';
 import { updateCommand } from './commands/update.js';
 import { deleteCommand } from './commands/delete.js';
+import { statusCommand } from './commands/status.js';
+import { doctorCommand } from './commands/doctor.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')) as { version: string };
+const pkg = JSON.parse(
+  readFileSync(join(__dirname, '../package.json'), 'utf8')
+) as { version: string };
+
+// ── Global options ─────────────────────────────────────────────────────────
 
 program
   .name('synap')
   .description('Pull agent and prompt files from a GitHub repository')
-  .version(pkg.version);
+  .version(pkg.version)
+  .option('--ci', 'CI mode: no interactive prompts, plain text output, strict failures')
+  .hook('preAction', (thisCommand) => {
+    const opts = thisCommand.opts<{ ci?: boolean }>();
+    if (opts.ci) setCI(true);
+  });
+
+// ── Commands ───────────────────────────────────────────────────────────────
 
 program
   .command('init')
@@ -28,9 +42,10 @@ program
 program
   .command('pull [name]')
   .description('Fetch a specific agent/prompt by name, or all of them')
-  .option('-f, --force',          'Overwrite local files without prompting')
-  .option('-d, --dry-run',        'Preview what would be downloaded without writing files')
-  .option('--branch <branch>',    'Override the branch/tag/SHA to pull from')
+  .option('-f, --force',            'Overwrite local files without prompting')
+  .option('-d, --dry-run',          'Preview what would be downloaded without writing files')
+  .option('--branch <branch>',      'Override the branch/tag/SHA to pull from')
+  .option('--retry-failed',         'Only retry files that failed in the last pull')
   .action(pullCommand);
 
 program
@@ -38,6 +53,11 @@ program
   .description('List available agents and prompts in the remote repo')
   .option('--json', 'Output as JSON')
   .action(listCommand);
+
+program
+  .command('status')
+  .description('Show the sync status of all tracked files (up-to-date, changed, missing)')
+  .action(statusCommand);
 
 program
   .command('diff [name]')
@@ -56,5 +76,10 @@ program
   .option('-f, --force',   'Skip confirmation prompt')
   .option('-d, --dry-run', 'Preview what would be deleted without removing anything')
   .action(deleteCommand);
+
+program
+  .command('doctor')
+  .description('Validate your setup: Node version, token, repo access, and config')
+  .action(doctorCommand);
 
 program.parse();
