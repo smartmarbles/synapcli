@@ -73,10 +73,12 @@ export interface PullOptions {
   dryRun?: boolean;
   branch?: string;
   retryFailed?: boolean;
+  interactive?: boolean;
 }
 
 export interface UpdateOptions {
   force?: boolean;
+  interactive?: boolean;
 }
 
 export interface ListOptions {
@@ -95,6 +97,15 @@ export interface ResolveLocalPathParams {
   remoteBase?: string;
   localOutput?: string;
   cwd?: string;
+}
+
+// ─── Preview ──────────────────────────────────────────────────────────────────
+
+export interface PreviewFile {
+  file: RemoteFile;
+  localPath: string;
+  isNew: boolean;
+  source: SourceConfig;
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────────

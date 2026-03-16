@@ -1,6 +1,5 @@
 import ora from 'ora';
 import chalk from 'chalk';
-import * as p from '@clack/prompts';
 import {
   loadConfig, parseRepoString, loadLock, saveLock,
   resolvedSources, lockKey,
@@ -8,10 +7,11 @@ import {
 import { fetchAllFiles, fetchFileContent } from '../lib/github.js';
 import { filterFiles } from '../lib/filter.js';
 import { runPostPullHook } from '../lib/hooks.js';
+import { previewAndConfirm, type PreviewFile } from '../lib/preview.js';
+import { writeCompletionCache } from '../lib/completionCache.js';
 import { writeFile, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { SynapProgress } from '../utils/progress.js';
-import { isCI } from '../utils/context.js';
 import { ExitCode } from '../types.js';
 import type { UpdateOptions } from '../types.js';
 
@@ -36,12 +36,15 @@ export async function updateCommand(
     const ref = source.branch || 'main';
     const remotePath = source.remotePath || '';
     const label = source.name ?? source.repo;
+    const repoKey = `${owner}/${repo}`;
 
+    // ── Discover changed files ───────────────────────────────────────────────
     const spinner = ora(`[${chalk.cyan(label)}] Checking for upstream changes…`).start();
     let allFiles;
     try {
       allFiles = await fetchAllFiles({ owner, repo, path: remotePath, ref });
       spinner.succeed(`[${chalk.cyan(label)}] Scanned ${chalk.bold(allFiles.length)} remote file(s)`);
+      writeCompletionCache(allFiles.map((f) => f.path));
     } catch (err) {
       spinner.fail(`Failed to fetch from ${label}`);
       fatal((err as Error).message, ExitCode.NetworkError);
@@ -50,9 +53,9 @@ export async function updateCommand(
     let targets = filterFiles(allFiles, source);
     if (name) targets = targets.filter((f) => f.path.includes(name));
 
-    // Only files whose SHA has changed
+    // Only files whose SHA has changed since last pull
     const changed = targets.filter((f) => {
-      const entry = lock[lockKey(`${owner}/${repo}`, f.path)];
+      const entry = lock[lockKey(repoKey, f.path)];
       return !entry || entry.sha !== f.sha;
     });
 
@@ -61,38 +64,34 @@ export async function updateCommand(
       continue;
     }
 
-    log.title(`[${label}] ${changed.length} file(s) with upstream changes:`);
-    console.log();
-    for (const f of changed) {
-      const wasNew = !lock[lockKey(`${owner}/${repo}`, f.path)];
-      console.log(
-        `  ${chalk.green('•')} ${chalk.white(f.path)} ` +
-        `${wasNew ? chalk.dim('(new)') : chalk.yellow('(changed)')}`
-      );
-    }
-    console.log();
+    // ── Build preview items ─────────────────────────────────────────────────
+    const previewItems: PreviewFile[] = changed.map((file) => ({
+      file,
+      localPath: resolveLocalPath({ remotePath: file.path, remoteBase: remotePath, localOutput: source.localOutput }),
+      isNew: !lock[lockKey(repoKey, file.path)],
+      source,
+    }));
 
-    if (!options.force && !isCI()) {
-      const confirmed = await p.confirm({
-        message: `Update ${changed.length} file(s) from ${label}?`,
-        initialValue: true,
-      });
-      if (p.isCancel(confirmed) || !confirmed) {
-        p.cancel('Update cancelled.');
-        process.exit(0);
-      }
-    }
+    // ── Status preview + confirmation (or interactive multiselect) ──────────
+    const confirmed = await previewAndConfirm(previewItems, {
+      verb: 'Update',
+      force: options.force,
+      interactive: options.interactive,
+    });
 
-    const progress = new SynapProgress(changed.length, 'files');
+    if (!confirmed || confirmed.length === 0) continue;
+
+    // ── Update selected files ───────────────────────────────────────────────
+    const progress = new SynapProgress(confirmed.length, 'files');
     const results = { written: [] as string[], failed: [] as string[] };
 
-    for (const file of changed) {
-      const localPath = resolveLocalPath({ remotePath: file.path, remoteBase: remotePath, localOutput: source.localOutput });
+    for (const item of confirmed) {
+      const { file, localPath } = item;
 
       try {
         const { content, sha } = await fetchFileContent({ owner, repo, path: file.path, ref });
         writeFile(localPath, content);
-        lock[lockKey(`${owner}/${repo}`, file.path)] = { sha, ref, pulledAt: new Date().toISOString() };
+        lock[lockKey(repoKey, file.path)] = { sha, ref, pulledAt: new Date().toISOString() };
         results.written.push(file.path);
       } catch (err) {
         log.error(`Failed: ${file.path} — ${(err as Error).message}`);

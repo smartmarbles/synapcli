@@ -68,7 +68,7 @@ export function resolvedSources(config: SynapConfig): SourceConfig[] {
         repo: config.repo,
         branch: config.branch ?? 'main',
         remotePath: config.remotePath ?? '',
-        localOutput: config.localOutput ?? 'src/agents',
+        localOutput: config.localOutput ?? '.',
         include: undefined,
         exclude: undefined,
       },

@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { loadConfig, parseRepoString, resolvedSources, CONFIG_FILE } from '../lib/config.js';
 import { validateToken, hasToken, listRepoContents } from '../lib/github.js';
@@ -56,16 +56,15 @@ export async function doctorCommand(): Promise<void> {
     return;
   }
 
-let config;
-try {
-  const raw = readFileSync(configPath, 'utf8');
-  config = JSON.parse(raw);
-  results.push(check(`${CONFIG_FILE} is valid JSON`, true));
-} catch {
-  results.push(check(`${CONFIG_FILE} is valid JSON`, false, 'File contains invalid JSON'));
-  printResults(results);
-  return;
-}
+  let config;
+  try {
+    config = (await import(configPath, { assert: { type: 'json' } })).default;
+    results.push(check(`${CONFIG_FILE} is valid JSON`, true));
+  } catch {
+    results.push(check(`${CONFIG_FILE} is valid JSON`, false, 'File contains invalid JSON'));
+    printResults(results);
+    return;
+  }
 
   // ── Sources resolvable ─────────────────────────────────────────────────────
   let sources;

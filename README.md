@@ -37,7 +37,7 @@ No setup needed. Requests are unauthenticated automatically.
 ### Private repositories
 SynapCLI reads your GitHub token from two places, in order:
 
-**1. Session environment variable**
+**1. OS environment variable**
 ```bash
 # Mac/Linux
 export GITHUB_TOKEN=ghp_yourtoken
@@ -45,11 +45,16 @@ export GITHUB_TOKEN=ghp_yourtoken
 # Windows PowerShell
 $env:GITHUB_TOKEN="ghp_yourtoken"
 ```
-Note: this only persists for the current terminal session.
 
-**2. `~/.gitconfig` (recommended — persists permanently)**
+**2. `~/.gitconfig` (recommended — persists across sessions)**
 ```bash
 git config --global synapcli.githubToken ghp_yourtoken
+```
+
+Or add it manually to `~/.gitconfig`:
+```ini
+[synapcli]
+    githubToken = ghp_yourtoken
 ```
 
 Generate a token at [github.com/settings/tokens](https://github.com/settings/tokens). For fine-grained tokens, grant **Contents: Read-only** on the target repository.
@@ -174,8 +179,8 @@ synap delete --force            # skip confirmation prompt
 {
   "repo": "acme/ai-agents",
   "branch": "main",
-  "remotePath": "agents",
-  "localOutput": "src/agents"
+  "remotePath": "",
+  "localOutput": "."
 }
 ```
 
@@ -189,7 +194,7 @@ synap delete --force            # skip confirmation prompt
       "repo": "acme/ai-agents",
       "branch": "main",
       "remotePath": "agents",
-      "localOutput": "src/agents",
+      "localOutput": ".",
       "include": ["**/*.md"],
       "exclude": ["**/test/**"]
     },
@@ -201,7 +206,7 @@ synap delete --force            # skip confirmation prompt
       "localOutput": "src/prompts"
     }
   ],
-  "postpull": "prettier --write src/agents src/prompts"
+  "postpull": "prettier --write ."
 }
 ```
 
@@ -332,5 +337,6 @@ synapcli-v2/
 ```gitignore
 node_modules/
 dist/
+.env
 # Do NOT ignore synap.lock.json — commit it
 ```

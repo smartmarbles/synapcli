@@ -1,4 +1,3 @@
-import fetch, { type Response } from 'node-fetch';
 import { execSync } from 'child_process';
 import { withRetry, sleep } from '../lib/retry.js';
 import { log } from '../utils/logger.js';

@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { loadConfig, parseRepoString, resolvedSources } from '../lib/config.js';
 import { fetchAllFiles } from '../lib/github.js';
 import { filterFiles } from '../lib/filter.js';
+import { writeCompletionCache } from '../lib/completionCache.js';
 import { log, fatal } from '../utils/logger.js';
 import { ExitCode } from '../types.js';
 import type { ListOptions, RemoteFile } from '../types.js';
@@ -17,6 +18,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
 
   const sources = resolvedSources(config);
   const allResults: { sourceName: string; files: RemoteFile[] }[] = [];
+  const allPaths: string[] = [];
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
@@ -31,11 +33,15 @@ export async function listCommand(options: ListOptions): Promise<void> {
       const files = filterFiles(raw, source);
       spinner.succeed(`${chalk.cyan(label)} — ${chalk.bold(files.length)} file(s)`);
       allResults.push({ sourceName: label, files });
+      allPaths.push(...files.map((f) => f.path));
     } catch (err) {
       spinner.fail(`Failed to fetch from ${label}`);
       fatal((err as Error).message, ExitCode.NetworkError);
     }
   }
+
+  // Update completion cache with all discovered file paths
+  writeCompletionCache(allPaths);
 
   if (options.json) {
     console.log(JSON.stringify(allResults, null, 2));
@@ -64,7 +70,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024)            return `${bytes}B`;
-  if (bytes < 1024 * 1024)     return `${(bytes / 1024).toFixed(1)}KB`;
+  if (bytes < 1024)        return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }

@@ -5,6 +5,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { saveConfig, CONFIG_FILE, parseRepoString } from '../lib/config.js';
 import { validateToken, hasToken } from '../lib/github.js';
+import { completionCommand } from './completion.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
 import { ExitCode, type SynapConfig } from '../types.js';
@@ -57,8 +58,8 @@ export async function initCommand(): Promise<void> {
       localOutput: () =>
         p.text({
           message: 'Local output directory',
-          placeholder: 'src/agents',
-          defaultValue: 'src/agents',
+          placeholder: '.',
+          defaultValue: '.',
         }),
 
       privateRepo: () =>
@@ -81,7 +82,7 @@ export async function initCommand(): Promise<void> {
     repo: `${owner}/${repo}`,
     branch:      (answers.branch as string)      || 'main',
     remotePath:  (answers.remotePath as string)  || '',
-    localOutput: (answers.localOutput as string) || 'src/agents',
+    localOutput: (answers.localOutput as string) || '.',
     ...(answers.privateRepo && { auth: 'env:GITHUB_TOKEN' }),
   };
 
@@ -97,14 +98,26 @@ export async function initCommand(): Promise<void> {
       log.warn('Continuing anyway — you can fix your token before running synap pull.');
     }
   } else if (answers.privateRepo) {
-	log.warn(
-	  `No GitHub token found. Either set ${chalk.bold('GITHUB_TOKEN')} as a session environment variable, ` +
-	  `or store it permanently with: ${chalk.white('git config --global synapcli.githubToken <token>')}`
-	);
+    log.warn(
+      `No GitHub token found. Set ${chalk.bold('GITHUB_TOKEN')} in your environment, ` +
+      `or run: ${chalk.white('git config --global synapcli.githubToken <token>')}`
+    );
   }
 
   saveConfig(config);
   p.outro(chalk.green(`Created ${CONFIG_FILE}`));
+
+  // ── Shell completion ───────────────────────────────────────────────────────
+  const installCompletion = await p.confirm({
+    message: 'Install shell tab completion now? (lets you tab-complete file names)',
+    initialValue: true,
+  });
+
+  if (!p.isCancel(installCompletion) && installCompletion) {
+    await completionCommand(undefined, { install: true });
+  } else {
+    log.dim(`You can install it later with: ${chalk.white('synap completion --install')}`);
+  }
 
   log.dim(
     `\nNext steps:\n  synap list       — browse available files\n  synap pull       — download everything\n  synap pull <n>   — download a specific file\n  synap doctor     — check your setup\n`

@@ -8,6 +8,8 @@ import {
 import { fetchAllFiles, fetchFileContent } from '../lib/github.js';
 import { filterFiles } from '../lib/filter.js';
 import { runPostPullHook } from '../lib/hooks.js';
+import { previewAndConfirm, type PreviewFile } from '../lib/preview.js';
+import { writeCompletionCache } from '../lib/completionCache.js';
 import { writeFile, readLocalFile, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { SynapProgress } from '../utils/progress.js';
@@ -37,6 +39,7 @@ export async function pullCommand(
     const ref = options.branch ?? source.branch ?? 'main';
     const remotePath = source.remotePath || '';
     const label = source.name ?? source.repo;
+    const repoKey = `${owner}/${repo}`;
 
     // ── Discover files ──────────────────────────────────────────────────────
     const spinner = ora(`[${chalk.cyan(label)}] Fetching file list…`).start();
@@ -44,6 +47,7 @@ export async function pullCommand(
     try {
       allFiles = await fetchAllFiles({ owner, repo, path: remotePath, ref });
       spinner.succeed(`[${chalk.cyan(label)}] Found ${chalk.bold(allFiles.length)} file(s)`);
+      writeCompletionCache(allFiles.map((f) => f.path));
     } catch (err) {
       spinner.fail(`Failed to fetch file list from ${label}`);
       fatal((err as Error).message, ExitCode.NetworkError);
@@ -51,9 +55,9 @@ export async function pullCommand(
 
     let targets = filterFiles(allFiles, source);
 
-    // ── --retry-failed: only pull files that previously failed ──────────────
+    // ── --retry-failed ──────────────────────────────────────────────────────
     if (options.retryFailed) {
-      const failedKey = lockKey(`${owner}/${repo}`, FAILED_KEY);
+      const failedKey = lockKey(repoKey, FAILED_KEY);
       const failedPaths: string[] = (lock[failedKey] as unknown as string[] | undefined) ?? [];
       if (failedPaths.length === 0) {
         log.info(`No failed files recorded for ${label}.`);
@@ -83,17 +87,34 @@ export async function pullCommand(
       continue;
     }
 
-    // ── Pull files ──────────────────────────────────────────────────────────
-    const results = { written: [] as string[], skipped: [] as string[], failed: [] as string[] };
-    const progress = new SynapProgress(targets.length, 'files');
+    // ── Build preview items ─────────────────────────────────────────────────
+    const previewItems: PreviewFile[] = targets.map((file) => ({
+      file,
+      localPath: resolveLocalPath({ remotePath: file.path, remoteBase: remotePath, localOutput: source.localOutput }),
+      isNew: !lock[lockKey(repoKey, file.path)],
+      source,
+    }));
 
-    for (const file of targets) {
-      const localPath = resolveLocalPath({ remotePath: file.path, remoteBase: remotePath, localOutput: source.localOutput });
+    // ── Status preview + confirmation (or interactive multiselect) ──────────
+    const confirmed = await previewAndConfirm(previewItems, {
+      verb: 'Pull',
+      force: options.force,
+      interactive: options.interactive,
+    });
+
+    if (!confirmed || confirmed.length === 0) continue;
+
+    // ── Pull selected files ─────────────────────────────────────────────────
+    const results = { written: [] as string[], skipped: [] as string[], failed: [] as string[] };
+    const progress = new SynapProgress(confirmed.length, 'files');
+
+    for (const item of confirmed) {
+      const { file, localPath } = item;
       const existing = readLocalFile(localPath);
-      const key = lockKey(`${owner}/${repo}`, file.path);
+      const key = lockKey(repoKey, file.path);
       const alreadyLocked = lock[key];
 
-      // Conflict handling
+      // Conflict: file exists locally and wasn't put there by synap
       if (existing !== null && !alreadyLocked && !options.force) {
         if (isCI()) {
           log.warn(`Conflict on ${localPath} — skipping (use --force to overwrite in CI).`);
@@ -132,7 +153,7 @@ export async function pullCommand(
     progress.stop();
 
     // Store failed paths in lock for --retry-failed
-    const failedKey = lockKey(`${owner}/${repo}`, FAILED_KEY);
+    const failedKey = lockKey(repoKey, FAILED_KEY);
     if (results.failed.length > 0) {
       (lock as Record<string, unknown>)[failedKey] = results.failed;
     } else {
@@ -146,17 +167,15 @@ export async function pullCommand(
     globalResults.failed   += results.failed.length;
   }
 
-  if (!options.dryRun) {
-    console.log();
-    if (globalResults.written)  log.success(`${globalResults.written} file(s) written`);
-    if (globalResults.skipped)  log.warn(`${globalResults.skipped} file(s) skipped`);
-    if (globalResults.failed) {
-      log.error(`${globalResults.failed} file(s) failed — run ${chalk.white('synap pull --retry-failed')} to retry`);
-      process.exit(ExitCode.GeneralError);
-    }
+  console.log();
+  if (globalResults.written)  log.success(`${globalResults.written} file(s) written`);
+  if (globalResults.skipped)  log.warn(`${globalResults.skipped} file(s) skipped`);
+  if (globalResults.failed) {
+    log.error(`${globalResults.failed} file(s) failed — run ${chalk.white('synap pull --retry-failed')} to retry`);
+    process.exit(ExitCode.GeneralError);
+  }
 
+  if (globalResults.written > 0) {
     runPostPullHook(config.postpull);
-  } else {
-    log.dim('\nNo files written. Remove --dry-run to apply.');
   }
 }
