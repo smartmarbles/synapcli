@@ -3,12 +3,14 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { saveConfig, CONFIG_FILE, parseRepoString } from '../lib/config.js';
+import { saveConfig, CONFIG_FILE } from '../lib/config.js';
+import { promptSource } from '../lib/sourcePrompt.js';
 import { validateToken, hasToken } from '../lib/github.js';
 import { completionCommand } from './completion.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
-import { ExitCode, type SynapConfig } from '../types.js';
+import { ExitCode } from '../types.js';
+import type { SynapConfig, SourceConfig } from '../types.js';
 
 export async function initCommand(): Promise<void> {
   if (isCI()) {
@@ -29,64 +31,27 @@ export async function initCommand(): Promise<void> {
     }
   }
 
-  const answers = await p.group(
-    {
-      repo: () =>
-        p.text({
-          message: 'GitHub repository (owner/repo or full URL)',
-          placeholder: 'acme/ai-agents',
-          validate: (val: string) => {
-            try { parseRepoString(val); }
-            catch { return 'Enter a valid "owner/repo" or GitHub URL'; }
-          },
-        }),
+  // ── Collect sources ────────────────────────────────────────────────────────
+  const sources: SourceConfig[] = [];
+  let addingMore = true;
+  let index = 0;
 
-      branch: () =>
-        p.text({
-          message: 'Default branch, tag, or commit SHA',
-          placeholder: 'main',
-          defaultValue: 'main',
-        }),
+  while (addingMore) {
+    const source = await promptSource(index);
+    sources.push(source);
+    index++;
 
-      remotePath: () =>
-        p.text({
-          message: 'Path inside the repo to pull from (leave blank for root)',
-          placeholder: 'agents',
-          defaultValue: '',
-        }),
+    const another = await p.confirm({
+      message: `Source ${chalk.cyan(source.name)} added. Register another repository?`,
+      initialValue: false,
+    });
 
-      localOutput: () =>
-        p.text({
-          message: 'Local output directory',
-          placeholder: '.',
-          defaultValue: '.',
-        }),
-
-      privateRepo: () =>
-        p.confirm({
-          message: 'Is this a private repository?',
-          initialValue: false,
-        }),
-    },
-    {
-      onCancel: () => {
-        p.cancel('Init cancelled.');
-        process.exit(0);
-      },
+    if (p.isCancel(another) || !another) {
+      addingMore = false;
     }
-  );
+  }
 
-  const { owner, repo } = parseRepoString(answers.repo as string);
-
-  const config: SynapConfig = {
-    repo: `${owner}/${repo}`,
-    branch:      (answers.branch as string)      || 'main',
-    remotePath:  (answers.remotePath as string)  || '',
-    localOutput: (answers.localOutput as string) || '.',
-    ...(answers.privateRepo && { auth: 'env:GITHUB_TOKEN' }),
-  };
-
-  // ── Token validation ──────────────────────────────────────────────────────
+  // ── Token validation ───────────────────────────────────────────────────────
   if (hasToken()) {
     const spinner = ora('Validating GitHub token…').start();
     try {
@@ -97,15 +62,31 @@ export async function initCommand(): Promise<void> {
       log.warn((err as Error).message);
       log.warn('Continuing anyway — you can fix your token before running synap pull.');
     }
-  } else if (answers.privateRepo) {
-    log.warn(
-      `No GitHub token found. Set ${chalk.bold('GITHUB_TOKEN')} in your environment, ` +
-      `or run: ${chalk.white('git config --global synapcli.githubToken <token>')}`
-    );
   }
 
+  // ── Save config ────────────────────────────────────────────────────────────
+  const config: SynapConfig = sources.length === 1
+    ? {
+        // Single source — use simple flat format
+        repo:        sources[0].repo,
+        branch:      sources[0].branch,
+        remotePath:  sources[0].remotePath,
+        localOutput: sources[0].localOutput,
+      }
+    : {
+        // Multiple sources — use sources array format
+        sources,
+      };
+
   saveConfig(config);
-  p.outro(chalk.green(`Created ${CONFIG_FILE}`));
+
+  console.log();
+  log.success(`Created ${CONFIG_FILE} with ${sources.length} source(s):`);
+  for (const s of sources) {
+    console.log(`  ${chalk.green('•')} ${chalk.white(s.name)} ${chalk.dim(`(${s.repo})`)}`);
+  }
+
+  p.outro(chalk.green('Config saved'));
 
   // ── Shell completion ───────────────────────────────────────────────────────
   const installCompletion = await p.confirm({
@@ -120,6 +101,6 @@ export async function initCommand(): Promise<void> {
   }
 
   log.dim(
-    `\nNext steps:\n  synap list       — browse available files\n  synap pull       — download everything\n  synap pull <n>   — download a specific file\n  synap doctor     — check your setup\n`
+    `\nNext steps:\n  synap list       — browse available files\n  synap pull       — download everything\n  synap register   — add another repository later\n  synap doctor     — check your setup\n`
   );
 }

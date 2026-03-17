@@ -36,7 +36,7 @@ export async function pullCommand(
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
-    const ref = options.branch ?? source.branch ?? 'main';
+    const ref = options.ref ?? source.branch ?? 'main';
     const remotePath = source.remotePath || '';
     const label = source.name ?? source.repo;
     const repoKey = `${owner}/${repo}`;

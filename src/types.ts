@@ -71,7 +71,7 @@ export interface ParsedRepo {
 export interface PullOptions {
   force?: boolean;
   dryRun?: boolean;
-  branch?: string;
+  ref?: string;
   retryFailed?: boolean;
   interactive?: boolean;
 }

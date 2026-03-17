@@ -117,26 +117,23 @@ function _SynapGetCompletions {
   }
 }
 
-$global:_synapCompleter = {
-  param($wordToComplete, $commandAst, $cursorPosition)
-  $tokens = $commandAst.ToString() -split '\\s+'
-  $cmd = if ($tokens.Count -gt 1) { $tokens[1] } else { '' }
-  if ($cmd -in @('pull', 'update', 'diff', 'delete')) {
-    $files = _SynapGetCompletions $wordToComplete
-    $files | ForEach-Object {
-      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-    }
-  } else {
-    @('init','pull','list','status','diff','update','delete','doctor','completion') |
-      Where-Object { $_ -like "$wordToComplete*" } |
-      ForEach-Object {
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+  Register-ArgumentCompleter -Native -CommandName synap -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+    $tokens = $commandAst.ToString() -split '\\s+'
+    $cmd = if ($tokens.Count -gt 1) { $tokens[1] } else { '' }
+    if ($cmd -in @('pull', 'update', 'diff', 'delete')) {
+      _SynapGetCompletions $wordToComplete | ForEach-Object {
         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
       }
+    } else {
+      @('init','pull','list','status','diff','update','delete','doctor','completion','register','deregister') |
+        Where-Object { $_ -like "$wordToComplete*" } |
+        ForEach-Object {
+          [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+    }
   }
-}
-
-if ($PSVersionTable.PSVersion.Major -ge 7) {
-  Register-ArgumentCompleter -Native -CommandName synap -ScriptBlock $_synapCompleter
 } else {
   $global:_synapOriginalTabExpansion2 = $function:TabExpansion2
   function global:TabExpansion2 {
@@ -144,25 +141,22 @@ if ($PSVersionTable.PSVersion.Major -ge 7) {
     $tokens = $inputScript.TrimStart() -split '\\s+'
     if ($tokens[0] -eq 'synap' -and $tokens.Count -ge 2) {
       $wordToComplete = if ($inputScript.EndsWith(' ')) { '' } else { $tokens[-1] }
-      $ast     = [System.Management.Automation.Language.Parser]::ParseInput($inputScript, [ref]$null, [ref]$null)
-      $results = & $global:_synapCompleter $wordToComplete $ast $cursorColumn
+      $results = _SynapGetCompletions $wordToComplete
       if ($results) {
         $col = [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new()
         $results | ForEach-Object { $col.Add([System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)) }
         $replStart = $cursorColumn - $wordToComplete.Length
         return [System.Management.Automation.CommandCompletion]::new($col, -1, $replStart, $wordToComplete.Length)
       }
-      # No matches - return empty, do NOT call CompleteInput (causes infinite loop in PS 5.1)
       $empty = [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new()
       return [System.Management.Automation.CommandCompletion]::new($empty, -1, $cursorColumn, 0)
     }
-    # Not a synap command - delegate to original
     if ($global:_synapOriginalTabExpansion2) {
       return & $global:_synapOriginalTabExpansion2 $inputScript $cursorColumn $options
     }
     return [System.Management.Automation.CommandCompletion]::new(
       [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new(),
-      -1, $cursorColumn, $cursorColumn
+      -1, $cursorColumn, 0
     )
   }
 }

@@ -81,6 +81,33 @@ export function resolvedSources(config: SynapConfig): SourceConfig[] {
 }
 
 /**
+ * Migrate a single-source config to the multi-source sources array format.
+ * If already in multi-source format, returns as-is.
+ */
+export function migrateToMultiSource(config: SynapConfig): SynapConfig {
+  if (config.sources && config.sources.length > 0) return config;
+
+  if (config.repo) {
+    const source: SourceConfig = {
+      name: config.repo,
+      repo: config.repo,
+      branch: config.branch ?? 'main',
+      remotePath: config.remotePath ?? '',
+      localOutput: config.localOutput ?? '.',
+    };
+
+    const migrated: SynapConfig = {
+      sources: [source],
+      ...(config.postpull && { postpull: config.postpull }),
+    };
+
+    return migrated;
+  }
+
+  return config;
+}
+
+/**
  * Parse a GitHub repo URL or "owner/repo" shorthand into { owner, repo }.
  */
 export function parseRepoString(repo: string): ParsedRepo {

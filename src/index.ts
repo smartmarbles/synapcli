@@ -57,7 +57,7 @@ program
   .option('-f, --force',            'Overwrite local files without prompting')
   .option('-i, --interactive',      'Interactively select which files to pull')
   .option('-d, --dry-run',          'Preview what would be downloaded without writing files')
-  .option('--branch <branch>',      'Override the branch/tag/SHA to pull from')
+  .option('--ref <ref>',            'Override the branch, tag, or commit SHA to pull from')
   .option('--retry-failed',         'Only retry files that failed in the last pull')
   .action(pullCommand);
 
