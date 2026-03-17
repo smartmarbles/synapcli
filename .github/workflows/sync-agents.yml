@@ -24,7 +24,10 @@ jobs:
 
       - name: Pull latest agents and prompts
         env:
-          GITHUB_TOKEN: ${{ secrets.SYNAP_GITHUB_TOKEN }}
+          # Public agent repo:    no token needed, remove this env block entirely
+          # Same-org private repo: use secrets.GITHUB_TOKEN (built-in, no setup needed)
+          # Cross-org private repo: create a PAT with Contents:Read-only and add as a repo secret
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: synap pull --ci --force
 
       - name: Commit and push changes

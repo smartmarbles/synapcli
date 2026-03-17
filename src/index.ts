@@ -16,6 +16,8 @@ import { deleteCommand }     from './commands/delete.js';
 import { statusCommand }     from './commands/status.js';
 import { doctorCommand }     from './commands/doctor.js';
 import { completionCommand } from './commands/completion.js';
+import { registerCommand }   from './commands/register.js';
+import { deregisterCommand } from './commands/deregister.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -101,5 +103,15 @@ program
   .description('Output or install shell tab completion (bash, zsh, fish, powershell)')
   .option('--install', 'Append the completion script to your shell config file')
   .action(completionCommand);
+
+program
+  .command('register')
+  .description('Add one or more repositories to an existing synap.config.json')
+  .action(registerCommand);
+
+program
+  .command('deregister')
+  .description('Remove a registered repository from synap.config.json')
+  .action(deregisterCommand);
 
 program.parse();

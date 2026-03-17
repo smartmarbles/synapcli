@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // This script runs automatically when the user runs: npm uninstall -g synapcli
-// It removes the SynapCLI completion block from all known shell profile files.
+// It removes the SynapCLI completion block from all known shell profile files
+// and cleans up the ~/.synap cache directory.
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { execSync } from 'child_process';
 
 const MARKER = '# SynapCLI';
+const CACHE_DIR = join(homedir(), '.synap');
 
 function removeFromFile(filePath) {
   if (!existsSync(filePath)) return false;
@@ -50,6 +52,8 @@ function getPowerShellProfile() {
   }
 }
 
+// ── Remove completion scripts from shell profiles ──────────────────────────
+
 const profiles = [
   join(homedir(), '.bashrc'),
   join(homedir(), '.zshrc'),
@@ -73,3 +77,15 @@ for (const profile of profiles) {
 if (!removed) {
   console.log('No SynapCLI completion scripts found to remove.');
 }
+
+// ── Remove ~/.synap cache directory ───────────────────────────────────────
+
+try {
+  if (existsSync(CACHE_DIR)) {
+    rmSync(CACHE_DIR, { recursive: true, force: true });
+    console.log(`Removed SynapCLI cache directory ${CACHE_DIR}`);
+  }
+} catch {
+  // Best-effort — never block uninstall
+}
+

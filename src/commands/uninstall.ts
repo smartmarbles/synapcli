@@ -1,9 +1,10 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { execSync } from 'child_process';
 
 const MARKER = '# SynapCLI';
+const CACHE_DIR = join(homedir(), '.synap');
 
 /**
  * Remove the SynapCLI completion block from a shell config file.
@@ -79,4 +80,15 @@ for (const profile of profiles) {
 
 if (!removed) {
   console.log('No SynapCLI completion scripts found to remove.');
+}
+
+// ── Remove ~/.synap cache directory ───────────────────────────────────────
+
+try {
+  if (existsSync(CACHE_DIR)) {
+    rmSync(CACHE_DIR, { recursive: true, force: true });
+    console.log(`Removed SynapCLI cache directory ${CACHE_DIR}`);
+  }
+} catch {
+  // Best-effort — never block uninstall
 }
