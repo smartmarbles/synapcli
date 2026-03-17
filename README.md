@@ -362,7 +362,7 @@ synap update --ci --force
 
 ### GitHub Actions example
 
-A ready-to-use workflow is included at `.github/workflows/sync-agents.yml`. It runs on a daily schedule and commits any changed files back to your repository automatically.
+A ready-to-use workflow is included at `templates/sync-agents.yml`. Copy it into your project at `.github/workflows/sync-agents.yml` to enable automatic daily syncing. It runs on a daily schedule and commits any changed files back to your repository automatically.
 
 #### Understanding secrets in GitHub Actions
 
@@ -498,9 +498,8 @@ synapcli/
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts
-├── .github/
-│   └── workflows/
-│       └── sync-agents.yml       # Ready-to-use CI workflow
+├── templates/
+│   └── sync-agents.yml           # Copy to .github/workflows/ in your own project
 └── src/
     ├── index.ts                  # CLI entry point
     ├── types.ts                  # All shared TypeScript interfaces
