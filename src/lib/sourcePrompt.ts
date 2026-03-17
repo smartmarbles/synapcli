@@ -3,6 +3,36 @@ import chalk from 'chalk';
 import { parseRepoString } from '../lib/config.js';
 import type { SourceConfig } from '../types.js';
 
+// ─── Common output directory presets ──────────────────────────────────────────
+
+const OUTPUT_PRESETS = [
+  {
+    value: '.',
+    label: 'Project root',
+    hint: '.',
+  },
+  {
+    value: '.github',
+    label: 'GitHub Copilot',
+    hint: '.github/',
+  },
+  {
+    value: '.claude',
+    label: 'Claude Code',
+    hint: '.claude/',
+  },
+  {
+    value: '.gemini',
+    label: 'Gemini Code Assist',
+    hint: '.gemini/',
+  },
+  {
+    value: 'custom',
+    label: 'Enter a custom path…',
+    hint: '',
+  },
+];
+
 /**
  * Interactively prompt the user to configure a single source.
  * Used by both `synap init` and `synap register`.
@@ -45,12 +75,21 @@ export async function promptSource(index?: number): Promise<SourceConfig> {
           defaultValue: '',
         }),
 
-      localOutput: () =>
-        p.text({
+      localOutputPreset: () =>
+        p.select({
           message: 'Local output directory',
-          placeholder: '.',
-          defaultValue: '.',
+          options: OUTPUT_PRESETS,
+          initialValue: '.',
         }),
+
+      localOutputCustom: ({ results }) =>
+        results.localOutputPreset === 'custom'
+          ? p.text({
+              message: 'Enter custom output directory',
+              placeholder: '.',
+              defaultValue: '.',
+            })
+          : Promise.resolve(undefined),
     },
     {
       onCancel: () => {
@@ -63,11 +102,16 @@ export async function promptSource(index?: number): Promise<SourceConfig> {
   const { owner, repo } = parseRepoString(answers.repo as string);
   const repoString = `${owner}/${repo}`;
 
+  const localOutput =
+    answers.localOutputPreset === 'custom'
+      ? ((answers.localOutputCustom as string) || '.')
+      : (answers.localOutputPreset as string);
+
   return {
     name: (answers.name as string) || repoString,
     repo: repoString,
     branch: (answers.branch as string) || 'main',
     remotePath: (answers.remotePath as string) || '',
-    localOutput: (answers.localOutput as string) || '.',
+    localOutput,
   };
 }
