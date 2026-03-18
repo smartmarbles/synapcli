@@ -32,7 +32,7 @@ export async function deregisterCommand(): Promise<void> {
     message: 'Select sources to remove:',
     options: sources.map((s) => ({
       value: s.repo,
-      label: chalk.white(s.name),
+      label: chalk.white(s.name ?? s.repo),
       hint: s.repo,
     })),
     required: true,

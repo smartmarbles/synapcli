@@ -23,7 +23,6 @@ export interface SynapConfig {
   branch?: string;
   remotePath?: string;
   localOutput?: string;
-  auth?: string;
   /** Shell command to run after any pull/update operation */
   postpull?: string;
 }
@@ -51,7 +50,6 @@ export interface FetchedFile {
   content: string;
   sha: string;
   size: number;
-  downloadUrl: string;
 }
 
 export interface RepoParams {

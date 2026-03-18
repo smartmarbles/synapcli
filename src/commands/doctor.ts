@@ -1,8 +1,9 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 import { loadConfig, parseRepoString, resolvedSources, CONFIG_FILE } from '../lib/config.js';
 import { validateToken, hasToken, listRepoContents } from '../lib/github.js';
 import { isDirWritable } from '../utils/files.js';
@@ -11,11 +12,16 @@ import { log } from '../utils/logger.js';
 interface CheckResult {
   label: string;
   ok: boolean;
+  warn?: boolean;
   detail?: string;
 }
 
 function check(label: string, ok: boolean, detail?: string): CheckResult {
   return { label, ok, detail };
+}
+
+function caution(label: string, detail?: string): CheckResult {
+  return { label, ok: true, warn: true, detail };
 }
 
 export async function doctorCommand(): Promise<void> {
@@ -56,9 +62,9 @@ export async function doctorCommand(): Promise<void> {
     return;
   }
 
-  let config;
+  // ── Config valid JSON ──────────────────────────────────────────────────────
   try {
-    config = (await import(configPath, { assert: { type: 'json' } })).default;
+    JSON.parse(readFileSync(configPath, 'utf8'));
     results.push(check(`${CONFIG_FILE} is valid JSON`, true));
   } catch {
     results.push(check(`${CONFIG_FILE} is valid JSON`, false, 'File contains invalid JSON'));
@@ -66,11 +72,36 @@ export async function doctorCommand(): Promise<void> {
     return;
   }
 
+  // ── Completion cache ───────────────────────────────────────────────────────
+  const cacheFile = join(homedir(), '.synap', 'completions.json');
+  if (existsSync(cacheFile)) {
+    try {
+      const cache = JSON.parse(readFileSync(cacheFile, 'utf8'));
+      const projectCount = Object.keys(cache).length;
+      results.push(check(`Completion cache valid (${projectCount} project(s) cached)`, true));
+    } catch {
+      results.push(check('Completion cache valid', false, `Corrupted cache at ${cacheFile} — run synap list to rebuild it`));
+    }
+  } else {
+    results.push(caution('Completion cache not found', 'Run synap list to enable tab completion'));
+  }
+
+  // ── Lockfile ───────────────────────────────────────────────────────────────
+  const lockPath = join(process.cwd(), 'synap.lock.json');
+  if (existsSync(lockPath)) {
+    try {
+      const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+      const trackedCount = Object.keys(lock).filter((k) => !k.endsWith('::__failed__')).length;
+      results.push(check(`synap.lock.json valid (${trackedCount} tracked file(s))`, true));
+    } catch {
+      results.push(check('synap.lock.json valid', false, 'File contains invalid JSON — run synap pull to rebuild it'));
+    }
+  }
+
   // ── Sources resolvable ─────────────────────────────────────────────────────
   let sources;
   try {
-    const { resolvedSources: rs, loadConfig: lc } = await import('../lib/config.js');
-    sources = rs(lc());
+    sources = resolvedSources(loadConfig());
     results.push(check(`Config sources valid (${sources.length} source(s))`, true));
   } catch (err) {
     results.push(check('Config sources valid', false, (err as Error).message));
@@ -104,7 +135,6 @@ export async function doctorCommand(): Promise<void> {
   for (const source of sources) {
     const label = source.name ?? source.repo;
 
-    // Repo accessible
     const repoSpinner = ora(`Checking repo access: ${label}…`).start();
     try {
       const { owner, repo } = parseRepoString(source.repo);
@@ -116,7 +146,6 @@ export async function doctorCommand(): Promise<void> {
       results.push(check(`Repo accessible: ${label}`, false, (err as Error).message));
     }
 
-    // Local output dir writable
     const writable = isDirWritable(source.localOutput);
     results.push(check(
       `Output dir writable: ${source.localOutput}`,
@@ -127,7 +156,7 @@ export async function doctorCommand(): Promise<void> {
 
   printResults(results);
 
-  const failed = results.filter((r) => !r.ok);
+  const failed = results.filter((r) => !r.ok && !r.warn);
   if (failed.length === 0) {
     console.log();
     log.success('All checks passed. SynapCLI is ready to use.');
@@ -140,8 +169,8 @@ export async function doctorCommand(): Promise<void> {
 
 function printResults(results: CheckResult[]): void {
   for (const r of results) {
-    const icon = r.ok ? chalk.green('✔') : chalk.red('✖');
-    const label = r.ok ? chalk.white(r.label) : chalk.red(r.label);
+    const icon  = r.warn ? chalk.yellow('⚠') : r.ok ? chalk.green('✔') : chalk.red('✖');
+    const label = r.warn ? chalk.yellow(r.label) : r.ok ? chalk.white(r.label) : chalk.red(r.label);
     console.log(`  ${icon} ${label}`);
     if (r.detail) {
       console.log(`      ${chalk.dim(r.detail)}`);

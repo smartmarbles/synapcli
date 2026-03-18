@@ -3,10 +3,11 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { saveConfig, CONFIG_FILE } from '../lib/config.js';
+import { saveConfig, CONFIG_FILE, resolvedSources } from '../lib/config.js';
 import { promptSource } from '../lib/sourcePrompt.js';
 import { validateToken, hasToken } from '../lib/github.js';
 import { completionCommand } from './completion.js';
+import { isDirWritable } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
 import { ExitCode } from '../types.js';
@@ -87,6 +88,28 @@ export async function initCommand(): Promise<void> {
   }
 
   p.outro(chalk.green('Config saved'));
+
+  // ── Silent post-init health check ─────────────────────────────────────────
+  const configuredSources = resolvedSources(config);
+  const warnings: string[] = [];
+
+  for (const source of configuredSources) {
+    if (!isDirWritable(source.localOutput)) {
+      warnings.push(`Output directory ${chalk.white(source.localOutput)} for ${chalk.white(source.name ?? source.repo)} is not writable`);
+    }
+  }
+
+  if (!hasToken()) {
+    warnings.push(`No GitHub token found — private repos will fail. Run: ${chalk.white('git config --global synapcli.githubToken <token>')}`);
+  }
+
+  if (warnings.length > 0) {
+    console.log();
+    log.warn('Setup completed with warnings:');
+    for (const w of warnings) {
+      console.log(`  ${chalk.yellow('⚠')} ${w}`);
+    }
+  }
 
   // ── Shell completion ───────────────────────────────────────────────────────
   const installCompletion = await p.confirm({

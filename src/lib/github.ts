@@ -138,7 +138,6 @@ export async function fetchFileContent({
     content: Buffer.from(data.content, 'base64').toString('utf8'),
     sha: data.sha,
     size: data.size,
-    downloadUrl: data.download_url ?? '',
   };
 }
 

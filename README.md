@@ -1,6 +1,12 @@
 # SynapCLI
 
-A professional CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, copilot instructions, and coding standards across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 18+ on the target machine. Supports multiple sources, glob filtering, lockfile-based diffing, tab completion, CI/CD pipelines, and more.
+[![npm version](https://img.shields.io/npm/v/synapcli.svg)](https://www.npmjs.com/package/synapcli)
+[![npm downloads](https://img.shields.io/npm/dm/synapcli.svg)](https://www.npmjs.com/package/synapcli)
+[![CI](https://github.com/smartmarbles/synapcli/actions/workflows/ci.yml/badge.svg)](https://github.com/smartmarbles/synapcli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/node/v/synapcli.svg)](https://nodejs.org)
+
+A professional CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, copilot instructions, coding standards, scripts, resources, and any other AI model assets across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 18+ on the target machine. Supports multiple sources, glob filtering, lockfile-based diffing, tab completion, CI/CD pipelines, and more.
 
 ---
 
@@ -16,6 +22,7 @@ A professional CLI tool for syncing files from a GitHub repository into any proj
 **Install globally** so the `synap` command is available in any project:
 ```bash
 npm install -g synapcli
+synap --version
 ```
 
 **Or use via npx** without installing:
@@ -195,7 +202,7 @@ synap delete --force            # skip confirmation prompt
 ---
 
 ### `synap completion [shell]`
-Output or install shell tab completion. Supports bash, zsh, fish, and PowerShell (including 5.1). Reads directly from the local cache file — no Node subprocess on every tab press.
+Output or install shell tab completion. Supports bash, zsh, fish, and PowerShell (including 5.1). The PowerShell script reads directly from the local cache file with no subprocess. Bash, zsh, and fish use a lightweight `synap --get-completions` subprocess call.
 
 ```bash
 synap completion --install      # interactive install (auto-detects your shell)
@@ -380,7 +387,7 @@ The following examples all show the relevant step inside `.github/workflows/sync
   run: synap pull --ci --force
 ```
 
-**Private agent repo in the same GitHub organization** — use the built-in token. No setup required:
+**Private agent repo in the same GitHub organization** — the built-in token is scoped only to the repo the workflow runs in. You still need a PAT unless your organization has explicitly granted cross-repo token access in its settings. If cross-repo access is enabled, use the built-in token:
 ```yaml
 - name: Pull latest agents and prompts
   env:
@@ -448,7 +455,7 @@ Some teams use GitHub Actions to automatically push files from a central repo in
 
 SynapCLI is most valuable in these situations:
 
-**AI-assisted development teams** — sharing a central library of agent definitions, system prompts, and copilot instructions across multiple projects. As these files evolve, `synap update` keeps every project in sync without manual copying.
+**AI-assisted development teams** — sharing a central library of agent definitions, system prompts, copilot instructions, scripts, resources, and other AI model assets across multiple projects. As these files evolve, `synap update` keeps every project in sync without manual copying.
 
 **Design system and standards distribution** — distributing coding standards, architecture guidelines, and documentation templates from a central source of truth into many downstream projects. The lockfile ensures every project can be audited for which version of each standard it is running.
 
@@ -456,90 +463,9 @@ SynapCLI is most valuable in these situations:
 
 **Teams without monorepo infrastructure** — getting the benefits of shared, versioned files without the overhead of setting up and maintaining Turborepo, Nx, or a private npm registry.
 
----
 
 ---
 
-# For Contributors
+## Contributing
 
----
-
-## Building from Source
-
-If you are contributing to SynapCLI or want to run it directly from source:
-
-```bash
-# Clone the repo and install dependencies
-cd synapcli
-npm install
-
-# Build TypeScript to dist/
-npm run build
-
-# Link globally so the synap command points to your local build
-npm link
-
-# Run directly from TypeScript source without building
-npx tsx src/index.ts <command>
-
-# Run tests
-npm test
-
-# Watch mode for tests
-npm run test:watch
-```
-
----
-
-## Project Structure
-
-```
-synapcli/
-├── package.json
-├── tsconfig.json
-├── vitest.config.ts
-├── templates/
-│   └── sync-agents.yml           # Copy to .github/workflows/ in your own project
-└── src/
-    ├── index.ts                  # CLI entry point
-    ├── types.ts                  # All shared TypeScript interfaces
-    ├── commands/
-    │   ├── init.ts               # synap init
-    │   ├── pull.ts               # synap pull
-    │   ├── list.ts               # synap list
-    │   ├── status.ts             # synap status
-    │   ├── diff.ts               # synap diff
-    │   ├── update.ts             # synap update
-    │   ├── delete.ts             # synap delete
-    │   ├── doctor.ts             # synap doctor
-    │   └── completion.ts         # synap completion
-    ├── lib/
-    │   ├── github.ts             # GitHub API client (retry, rate limits)
-    │   ├── config.ts             # Config and lockfile read/write
-    │   ├── filter.ts             # Glob pattern filtering
-    │   ├── hooks.ts              # Post-pull hook runner
-    │   ├── preview.ts            # Status preview and interactive selection
-    │   ├── completionCache.ts    # Tab completion cache
-    │   └── retry.ts              # Exponential backoff retry
-    ├── utils/
-    │   ├── files.ts              # Local file operations
-    │   ├── logger.ts             # CI-aware colored output
-    │   ├── progress.ts           # Progress bar (degrades in CI)
-    │   └── context.ts            # Global CI mode flag
-    └── tests/
-        ├── config.test.ts
-        ├── files.test.ts
-        ├── filter.test.ts
-        ├── retry.test.ts
-        └── completionCache.test.ts
-```
-
----
-
-## .gitignore recommendation
-
-```gitignore
-node_modules/
-dist/
-# Do NOT ignore synap.lock.json — commit it
-```
+Interested in contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, project structure, and how to submit a pull request.

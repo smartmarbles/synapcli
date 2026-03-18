@@ -54,11 +54,13 @@ export async function listCommand(options: ListOptions): Promise<void> {
       continue;
     }
 
+    const source = sources.find((s) => s.name === sourceName || s.repo === sourceName);
+    const remotePath = source?.remotePath ?? '';
+
     log.title(`${sourceName}`);
     console.log();
 
     for (const file of files) {
-      const remotePath = sources.find((s) => s.name === sourceName || s.repo === sourceName)?.remotePath ?? '';
       const label = file.path.replace(remotePath ? remotePath + '/' : '', '');
       console.log(`  ${chalk.green('•')} ${chalk.white(label)} ${chalk.dim(formatSize(file.size))}`);
     }

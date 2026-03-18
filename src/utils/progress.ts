@@ -11,11 +11,9 @@ export class SynapProgress {
   private bar?: cliProgress.SingleBar;
   private total: number;
   private current = 0;
-  private label: string;
 
   constructor(total: number, label = 'files') {
     this.total = total;
-    this.label = label;
 
     if (!isCI() && total > 1) {
       this.bar = new cliProgress.SingleBar(

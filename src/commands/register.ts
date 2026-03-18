@@ -56,9 +56,9 @@ export async function registerCommand(): Promise<void> {
     }
 
     const another = await p.confirm({
-      message: newSources.length > 0
-        ? `Source ${chalk.cyan(source.name)} added. Register another?`
-        : 'Register another repository?',
+      message: duplicate
+        ? 'Register another repository?'
+        : `Source ${chalk.cyan(source.name)} added. Register another?`,
       initialValue: false,
     });
 

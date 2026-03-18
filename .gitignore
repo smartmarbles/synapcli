@@ -1,7 +1,8 @@
 node_modules/
 dist/
+coverage/
 .env
 *.log
-coverage
+synap.lock.json
 synap.config.json
-synap.config.js
+# Do NOT ignore synap.lock.json — commit it
