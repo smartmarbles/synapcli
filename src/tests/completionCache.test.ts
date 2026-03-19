@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { join } from 'path';
+import { homedir } from 'os';
 
-// Mock fs and os so tests don't touch the real filesystem
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();
   return {
@@ -17,7 +18,7 @@ vi.mock('os', () => ({
 }));
 
 import { writeCompletionCache, getCompletions } from '../lib/completionCache.js';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 
 const mockFiles = [
   'agents/summarizer.md',
@@ -31,6 +32,8 @@ describe('completion cache', () => {
     vi.clearAllMocks();
   });
 
+  // ── writeCompletionCache ────────────────────────────────────────────────────
+
   it('writes file paths to the cache under the cwd key', () => {
     writeCompletionCache(mockFiles, '/my/project');
     expect(writeFileSync).toHaveBeenCalledOnce();
@@ -38,64 +41,79 @@ describe('completion cache', () => {
     expect(written['/my/project'].files).toEqual(mockFiles);
   });
 
+  it('creates the cache directory if it does not exist', () => {
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    writeCompletionCache(mockFiles, '/my/project');
+    expect(mkdirSync).toHaveBeenCalledWith(join(homedir(), '.synap'), { recursive: true });
+  });
+
+  it('does not create cache directory if it already exists', () => {
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readFileSync as ReturnType<typeof vi.fn>).mockReturnValue('{}');
+    writeCompletionCache(mockFiles, '/my/project');
+    expect(mkdirSync).not.toHaveBeenCalled();
+  });
+
+  // ── getCompletions ──────────────────────────────────────────────────────────
+
   it('returns matches for a partial string from the cache', () => {
     const cacheData = {
-      '/my/project': {
-        files: mockFiles,
-        cachedAt: new Date().toISOString(),
-      },
+      '/my/project': { files: mockFiles, cachedAt: new Date().toISOString() },
     };
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (readFileSync as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(cacheData));
 
-    const results = getCompletions('summ', '/my/project');
-    expect(results).toEqual(['agents/summarizer.md']);
+    expect(getCompletions('summ', '/my/project')).toEqual(['agents/summarizer.md']);
   });
 
-  it('matches on filename portion, not just full path', () => {
+  it('matches on filename portion of path', () => {
     const cacheData = {
-      '/my/project': {
-        files: mockFiles,
-        cachedAt: new Date().toISOString(),
-      },
+      '/my/project': { files: mockFiles, cachedAt: new Date().toISOString() },
     };
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (readFileSync as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(cacheData));
 
-    const results = getCompletions('system', '/my/project');
-    expect(results).toContain('prompts/system-prompt.txt');
+    expect(getCompletions('system', '/my/project')).toContain('prompts/system-prompt.txt');
   });
 
-  it('returns empty array when cache is missing', () => {
+  it('returns all files for empty partial string', () => {
+    const cacheData = {
+      '/my/project': { files: mockFiles, cachedAt: new Date().toISOString() },
+    };
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readFileSync as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(cacheData));
+
+    expect(getCompletions('', '/my/project')).toHaveLength(mockFiles.length);
+  });
+
+  it('returns empty array when cache file does not exist', () => {
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(false);
-    const results = getCompletions('summ', '/my/project');
-    expect(results).toEqual([]);
+    expect(getCompletions('summ', '/my/project')).toEqual([]);
   });
 
   it('returns empty array when cache is stale', () => {
-    const staleDate = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 min ago
-    const cacheData = {
-      '/my/project': { files: mockFiles, cachedAt: staleDate },
-    };
+    const staleDate = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    const cacheData = { '/my/project': { files: mockFiles, cachedAt: staleDate } };
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (readFileSync as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(cacheData));
 
-    const results = getCompletions('summ', '/my/project');
-    expect(results).toEqual([]);
+    expect(getCompletions('summ', '/my/project')).toEqual([]);
   });
 
-  it('returns empty array when partial is empty string', () => {
+  it('returns empty array when cwd has no entry in cache', () => {
     const cacheData = {
-      '/my/project': {
-        files: mockFiles,
-        cachedAt: new Date().toISOString(),
-      },
+      '/other/project': { files: mockFiles, cachedAt: new Date().toISOString() },
     };
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (readFileSync as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(cacheData));
 
-    // Empty string matches everything — all files should be returned
-    const results = getCompletions('', '/my/project');
-    expect(results).toHaveLength(mockFiles.length);
+    expect(getCompletions('summ', '/my/project')).toEqual([]);
+  });
+
+  it('returns empty array when readFileSync throws (corrupt cache file)', () => {
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readFileSync as ReturnType<typeof vi.fn>).mockImplementation(() => { throw new Error('read error'); });
+
+    expect(getCompletions('summ', '/my/project')).toEqual([]);
   });
 });

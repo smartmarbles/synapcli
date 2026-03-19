@@ -192,10 +192,28 @@ describe('resolvedSources', () => {
     expect(sources[0].branch).toBe('main');
   });
 
+  it('uses default remotePath empty string when not specified', () => {
+    const config = { repo: 'acme/agents', branch: 'main', remotePath: undefined, localOutput: '.' } as unknown as SynapConfig;
+    const sources = resolvedSources(config);
+    expect(sources[0].remotePath).toBe('');
+  });
+
+  it('uses defined remotePath when specified', () => {
+    const config: SynapConfig = { repo: 'acme/agents', branch: 'main', remotePath: 'agents', localOutput: '.' };
+    const sources = resolvedSources(config);
+    expect(sources[0].remotePath).toBe('agents');
+  });
+
   it('uses default localOutput . when not specified', () => {
-    const config: SynapConfig = { repo: 'acme/agents', branch: 'main', remotePath: '' };
+    const config = { repo: 'acme/agents', branch: 'main', remotePath: '', localOutput: undefined } as unknown as SynapConfig;
     const sources = resolvedSources(config);
     expect(sources[0].localOutput).toBe('.');
+  });
+
+  it('uses defined localOutput when specified', () => {
+    const config: SynapConfig = { repo: 'acme/agents', branch: 'main', remotePath: '', localOutput: 'src/agents' };
+    const sources = resolvedSources(config);
+    expect(sources[0].localOutput).toBe('src/agents');
   });
 
   it('throws when neither repo nor sources are set', () => {
@@ -234,6 +252,42 @@ describe('migrateToMultiSource', () => {
     const config: SynapConfig = { repo: 'acme/agents', branch: 'main', remotePath: '', localOutput: '.', postpull: 'prettier --write .' };
     const result = migrateToMultiSource(config);
     expect(result.postpull).toBe('prettier --write .');
+  });
+
+  it('uses default branch main when not specified during migration', () => {
+    const config = { repo: 'acme/agents', branch: undefined, remotePath: '', localOutput: '.' } as unknown as SynapConfig;
+    const result = migrateToMultiSource(config);
+    expect(result.sources![0].branch).toBe('main');
+  });
+
+  it('uses defined branch when specified during migration', () => {
+    const config: SynapConfig = { repo: 'acme/agents', branch: 'dev', remotePath: '', localOutput: '.' };
+    const result = migrateToMultiSource(config);
+    expect(result.sources![0].branch).toBe('dev');
+  });
+
+  it('uses default remotePath empty string when not specified during migration', () => {
+    const config = { repo: 'acme/agents', branch: 'main', remotePath: undefined, localOutput: '.' } as unknown as SynapConfig;
+    const result = migrateToMultiSource(config);
+    expect(result.sources![0].remotePath).toBe('');
+  });
+
+  it('uses defined remotePath when specified during migration', () => {
+    const config: SynapConfig = { repo: 'acme/agents', branch: 'main', remotePath: 'agents', localOutput: '.' };
+    const result = migrateToMultiSource(config);
+    expect(result.sources![0].remotePath).toBe('agents');
+  });
+
+  it('uses default localOutput . when not specified during migration', () => {
+    const config = { repo: 'acme/agents', branch: 'main', remotePath: '', localOutput: undefined } as unknown as SynapConfig;
+    const result = migrateToMultiSource(config);
+    expect(result.sources![0].localOutput).toBe('.');
+  });
+
+  it('uses defined localOutput when specified during migration', () => {
+    const config: SynapConfig = { repo: 'acme/agents', branch: 'main', remotePath: '', localOutput: 'src/agents' };
+    const result = migrateToMultiSource(config);
+    expect(result.sources![0].localOutput).toBe('src/agents');
   });
 
   it('returns config unchanged if no repo or sources', () => {
