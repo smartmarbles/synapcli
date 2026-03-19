@@ -160,4 +160,41 @@ describe('statusCommand', () => {
     rmSync(join(testDir, 'synap.config.json'));
     await expect(statusCommand()).rejects.toThrow('exit:2');
   });
+
+  it('warns when no files are found across all sources', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([])));
+
+    await statusCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output.toLowerCase()).toContain('no files found');
+  });
+
+  it('shows "pending pull" summary when some files are not-pulled', async () => {
+    // No lock entries → all files are not-pulled
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([
+      { type: 'file', path: 'summarizer.md', sha: 'sha-v1', size: 100 },
+    ])));
+
+    await statusCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output.toLowerCase()).toContain('not yet pulled');
+  });
+
+  it('shows "everything up to date" summary when all files match', async () => {
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: 'sha-v1', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+    writeFileSync(join(testDir, 'summarizer.md'), '# content');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([
+      { type: 'file', path: 'summarizer.md', sha: 'sha-v1', size: 100 },
+    ])));
+
+    await statusCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output.toLowerCase()).toContain('up to date');
+  });
 });

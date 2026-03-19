@@ -202,4 +202,44 @@ describe('updateCommand', () => {
     rmSync(join(testDir, 'synap.config.json'));
     await expect(updateCommand(undefined, {})).rejects.toThrow('exit:2');
   });
+
+  it('exits with code 1 when a file fetch fails during update', async () => {
+    // summarizer has old SHA in lock → needs update, but fetch will fail
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: 'sha-summ-v1', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeListResponse([{ type: 'file', path: 'summarizer.md', sha: 'sha-summ-v2', size: 150 }]))
+      .mockRejectedValueOnce(new Error('Network error fetching content'))
+    );
+
+    await expect(updateCommand(undefined, { force: true })).rejects.toThrow('exit:1');
+  });
+
+  it('logs warning and does not update when name filter matches nothing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
+
+    await updateCommand('no-such-file', { force: true });
+
+    // No files written
+    expect(existsSync(join(testDir, 'summarizer.md'))).toBe(false);
+    expect(existsSync(join(testDir, 'classifier.md'))).toBe(false);
+  });
+
+  it('postpull hook runs after a successful update', async () => {
+    saveConfig({ ...BASE_CONFIG, postpull: 'echo updated' }, testDir);
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: 'sha-summ-v1', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeListResponse([{ type: 'file', path: 'summarizer.md', sha: 'sha-summ-v2', size: 150 }]))
+      .mockResolvedValueOnce(makeFileResponse('summarizer.md', 'sha-summ-v2', CONTENTS['summarizer.md']))
+    );
+
+    await updateCommand(undefined, { force: true });
+
+    expect(runPostPullHook).toHaveBeenCalledWith('echo updated');
+  });
 });

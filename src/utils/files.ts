@@ -46,7 +46,7 @@ export function isDirWritable(dirPath: string): boolean {
     accessSync(check, constants.W_OK);
     return true;
   } catch {
-    /* istanbul ignore next */
+    /* v8 ignore next */
     return false;
   }
 }

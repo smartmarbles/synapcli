@@ -36,6 +36,7 @@ export async function doctorCommand(): Promise<void> {
   results.push(check(
     `Node.js version (${nodeVersion})`,
     major >= 18,
+    /* v8 ignore next */
     major < 18 ? 'Node.js 18+ is required' : undefined
   ));
 

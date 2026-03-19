@@ -175,6 +175,7 @@ const SHELL_CONFIG: Record<string, string> = {
 function getPowerShellProfile(): string {
   try {
     // Try pwsh (PS7) first, fall back to powershell (PS5.1)
+    /* v8 ignore next 3 */
     const cmd = process.platform === 'win32'
       ? 'powershell -NoProfile -Command "$PROFILE"'
       : 'pwsh -NoProfile -Command "$PROFILE"';
@@ -196,6 +197,7 @@ function detectShell(): string | null {
 
   // Windows — check PSModulePath or PSVERSION
   if (process.env.PSModulePath || process.env.PSVersionTable) return 'powershell';
+  /* v8 ignore next */
   if (process.platform === 'win32') return 'powershell';
 
   return null;

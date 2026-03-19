@@ -151,4 +151,36 @@ describe('listCommand', () => {
     rm(join(testDir, 'synap.config.json'));
     await expect(listCommand({})).rejects.toThrow('exit:2');
   });
+
+  it('shows "No files found" warning when source returns empty file list', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([])));
+
+    await listCommand({});
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('No files found');
+  });
+
+  it('multi-source config lists files from each source separately', async () => {
+    saveConfig({
+      sources: [
+        { name: 'Agents',  repo: `${OWNER}/${REPO}`,  branch: BRANCH, remotePath: '', localOutput: '.' },
+        { name: 'Prompts', repo: 'acme/prompts', branch: BRANCH, remotePath: '', localOutput: '.' },
+      ],
+    }, testDir);
+
+    const agentFiles   = [{ type: 'file', path: 'agent.md',  sha: 'sha1', size: 10 }];
+    const promptFiles  = [{ type: 'file', path: 'prompt.md', sha: 'sha2', size: 20 }];
+
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeListResponse(agentFiles))
+      .mockResolvedValueOnce(makeListResponse(promptFiles))
+    );
+
+    await listCommand({});
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('agent.md');
+    expect(output).toContain('prompt.md');
+  });
 });

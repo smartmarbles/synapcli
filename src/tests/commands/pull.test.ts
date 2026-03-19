@@ -246,4 +246,70 @@ describe('pullCommand', () => {
     rmSync(join(testDir, 'synap.config.json'));
     await expect(pullCommand(undefined, { force: true })).rejects.toThrow('exit:2');
   });
+
+  it('--retry-failed with no prior failures logs info and skips', async () => {
+    // No failed key in lock
+    const fetchMock = vi.fn().mockResolvedValueOnce(makeListResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await pullCommand(undefined, { force: true, retryFailed: true });
+
+    // Only the list fetch — no content fetched
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('interactive conflict: user chooses skip — file not overwritten', async () => {
+    const { select } = await import('@clack/prompts');
+    vi.mocked(select).mockResolvedValueOnce('skip');
+
+    writeFileSync(join(testDir, 'summarizer.md'), 'pre-existing content');
+    // Only pull summarizer so we get exactly one conflict prompt
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(makeListResponse([REMOTE_FILES[0]]))
+      .mockResolvedValueOnce(makeFileResponse('summarizer.md', 'sha-summ-v1', CONTENTS['summarizer.md']));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await pullCommand(undefined, { force: false });
+
+    expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe('pre-existing content');
+  });
+
+  it('interactive conflict: user chooses overwrite — file is replaced', async () => {
+    const { select } = await import('@clack/prompts');
+    vi.mocked(select).mockResolvedValueOnce('overwrite');
+
+    writeFileSync(join(testDir, 'summarizer.md'), 'pre-existing content');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(makeListResponse([REMOTE_FILES[0]]))
+      .mockResolvedValueOnce(makeFileResponse('summarizer.md', 'sha-summ-v1', CONTENTS['summarizer.md']));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await pullCommand(undefined, { force: false });
+
+    expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe(CONTENTS['summarizer.md']);
+  });
+
+  it('interactive conflict: prompt cancel treats file as skipped', async () => {
+    const { select, isCancel } = await import('@clack/prompts');
+    // First isCancel call goes to previewAndConfirm's confirm check → must be false
+    // Second isCancel call goes to the conflict select check → true (cancel)
+    vi.mocked(isCancel).mockReturnValueOnce(false).mockReturnValueOnce(true);
+    vi.mocked(select).mockResolvedValueOnce(Symbol('cancel') as unknown as string);
+
+    writeFileSync(join(testDir, 'summarizer.md'), 'pre-existing content');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([REMOTE_FILES[0]])));
+
+    await pullCommand(undefined, { force: false });
+
+    expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe('pre-existing content');
+  });
+
+  it('logs warning and continues when no files match name filter', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
+
+    await pullCommand('nonexistent-file', { force: true });
+
+    // Should not throw; no files written
+    expect(existsSync(join(testDir, 'summarizer.md'))).toBe(false);
+  });
 });

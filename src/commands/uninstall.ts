@@ -38,6 +38,7 @@ function removeFromFile(filePath: string): boolean {
 
 function getPowerShellProfile(): string {
   try {
+    /* v8 ignore next 3 */
     const cmd = process.platform === 'win32'
       ? 'powershell -NoProfile -Command "$PROFILE"'
       : 'pwsh -NoProfile -Command "$PROFILE"';
@@ -63,7 +64,7 @@ export function runUninstall(): void {
         console.log(`Removed SynapCLI completion from ${profile}`);
         removed = true;
       }
-    } catch {
+    } catch /* v8 ignore next */ {
       // Best-effort — never block uninstall
     }
   }
@@ -78,7 +79,7 @@ export function runUninstall(): void {
       rmSync(CACHE_DIR, { recursive: true, force: true });
       console.log(`Removed SynapCLI cache directory ${CACHE_DIR}`);
     }
-  } catch {
+  } catch /* v8 ignore next */ {
     // Best-effort — never block uninstall
   }
 }

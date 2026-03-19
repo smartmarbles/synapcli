@@ -19,6 +19,7 @@ import * as p                                   from '@clack/prompts';
 import { registerCommand }                       from '../../commands/register.js';
 import { promptSource }                          from '../../lib/sourcePrompt.js';
 import { saveConfig, loadConfig, CONFIG_FILE }   from '../../lib/config.js';
+import { setCI }                                 from '../../utils/context.js';
 import type { SynapConfig, SourceConfig }        from '../../types.js';
 
 const NEW_SOURCE: SourceConfig = {
@@ -43,6 +44,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setCI(false);
   rmSync(testDir, { recursive: true, force: true });
   vi.restoreAllMocks();
 });
@@ -120,6 +122,12 @@ describe('registerCommand', () => {
   });
 
   it('exits with code 2 when config file is missing', async () => {
+    await expect(registerCommand()).rejects.toThrow('exit:2');
+  });
+
+  it('exits with code 2 in CI mode', async () => {
+    setCI(true);
+    saveConfig({ repo: 'acme/agents', branch: 'main', remotePath: '', localOutput: '.' }, testDir);
     await expect(registerCommand()).rejects.toThrow('exit:2');
   });
 });

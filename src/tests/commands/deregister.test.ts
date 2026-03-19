@@ -15,6 +15,7 @@ vi.mock('@clack/prompts', () => ({
 import * as p                                           from '@clack/prompts';
 import { deregisterCommand }                             from '../../commands/deregister.js';
 import { saveConfig, saveLock, loadConfig, loadLock }    from '../../lib/config.js';
+import { setCI }                                         from '../../utils/context.js';
 import type { SynapConfig }                              from '../../types.js';
 
 const BRANCH     = 'main';
@@ -41,6 +42,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setCI(false);
   rmSync(testDir, { recursive: true, force: true });
   vi.restoreAllMocks();
 });
@@ -132,5 +134,64 @@ describe('deregisterCommand', () => {
 
   it('exits with code 2 when config file is missing', async () => {
     await expect(deregisterCommand()).rejects.toThrow('exit:2');
+  });
+
+  it('exits with code 2 in CI mode', async () => {
+    setCI(true);
+    saveConfig(MULTI_CONFIG, testDir);
+    await expect(deregisterCommand()).rejects.toThrow('exit:2');
+  });
+
+  it('exits cleanly when multiselect is cancelled', async () => {
+    saveConfig(MULTI_CONFIG, testDir);
+    vi.mocked(p.isCancel).mockReturnValueOnce(true);
+    vi.mocked(p.multiselect).mockResolvedValueOnce(Symbol('cancel') as unknown as string[]);
+
+    await expect(deregisterCommand()).rejects.toThrow('exit:0');
+    expect(loadConfig(testDir).sources).toHaveLength(2);
+  });
+
+  it('exits cleanly when confirm prompt is cancelled', async () => {
+    saveConfig(MULTI_CONFIG, testDir);
+    vi.mocked(p.multiselect).mockResolvedValueOnce(['acme/prompts']);
+    vi.mocked(p.isCancel).mockReturnValueOnce(false).mockReturnValueOnce(true);
+    vi.mocked(p.confirm).mockResolvedValueOnce(Symbol('cancel') as unknown as boolean);
+
+    await expect(deregisterCommand()).rejects.toThrow('exit:0');
+    expect(loadConfig(testDir).sources).toHaveLength(2);
+  });
+
+  it('warns when no sources are remaining after removal', async () => {
+    saveConfig(MULTI_CONFIG, testDir);
+    vi.mocked(p.multiselect).mockResolvedValueOnce(['acme/agents', 'acme/prompts']);
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+    const consoleSpy = vi.spyOn(console, 'log');
+
+    await deregisterCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('No sources remaining');
+  });
+
+  it('exits cleanly when config has no sources', async () => {
+    saveConfig({ sources: [] }, testDir);
+    await expect(deregisterCommand()).rejects.toThrow('exit:0');
+  });
+
+  it('keeps multi-source format when two or more sources remain', async () => {
+    saveConfig({
+      sources: [
+        { name: 'Agents',  repo: 'acme/agents',  branch: BRANCH, remotePath: '', localOutput: '.' },
+        { name: 'Prompts', repo: 'acme/prompts', branch: BRANCH, remotePath: '', localOutput: '.' },
+        { name: 'Tools',   repo: 'acme/tools',   branch: BRANCH, remotePath: '', localOutput: '.' },
+      ],
+    }, testDir);
+    vi.mocked(p.multiselect).mockResolvedValueOnce(['acme/tools']);
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+
+    await deregisterCommand();
+
+    const config = loadConfig(testDir);
+    expect(config.sources).toHaveLength(2);
   });
 });
