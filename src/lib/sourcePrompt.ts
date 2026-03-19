@@ -48,7 +48,8 @@ export async function promptSource(index?: number): Promise<SourceConfig> {
         p.text({
           message: 'GitHub repository (owner/repo or full URL)',
           placeholder: 'acme-org/ai-agents',
-          validate: (val: string) => {
+          validate: (val: string | undefined) => {
+            if (!val) return 'Enter a valid "owner/repo" or GitHub URL';
             try { parseRepoString(val); }
             catch { return 'Enter a valid "owner/repo" or GitHub URL'; }
           },
