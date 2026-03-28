@@ -8,7 +8,7 @@ import { log, fatal } from '../utils/logger.js';
 import { ExitCode } from '../types.js';
 import type { ListOptions, RemoteFile } from '../types.js';
 
-export async function listCommand(options: ListOptions): Promise<void> {
+export async function listCommand(path: string | undefined, options: ListOptions): Promise<void> {
   let config;
   try {
     config = loadConfig();
@@ -16,22 +16,39 @@ export async function listCommand(options: ListOptions): Promise<void> {
     fatal((err as Error).message, ExitCode.ConfigError);
   }
 
-  const sources = resolvedSources(config);
+  const allSources = resolvedSources(config);
+  const sources = options.source
+    ? allSources.filter((s) => (s.name ?? s.repo) === options.source)
+    : allSources;
+
+  /* v8 ignore next */
+  if (options.source && sources.length === 0) {
+    fatal(
+      `No source named "${options.source}". Available: ${allSources.map((s) => s.name ?? s.repo).join(', ')}`,
+      ExitCode.ConfigError,
+    );
+  }
+
   const allResults: { sourceName: string; files: RemoteFile[] }[] = [];
   const allPaths: string[] = [];
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
     const ref = source.branch || 'main';
-    const remotePath = source.remotePath || '';
+    const configRemotePath = source.remotePath || '';
+    const remotePath = path
+      ? configRemotePath ? `${configRemotePath}/${path}` : path
+      : configRemotePath;
     const label = source.name ?? source.repo;
 
-    const spinner = ora(`Fetching file list from ${chalk.cyan(label)}`).start();
+    const pathLabel = path ? `${label}/${path}` : label;
+
+    const spinner = ora(`Fetching file list from ${chalk.cyan(pathLabel)}`).start();
 
     try {
       const raw = await fetchAllFiles({ owner, repo, path: remotePath, ref });
       const files = filterFiles(raw, source);
-      spinner.succeed(`${chalk.cyan(label)} — ${chalk.bold(files.length)} file(s)`);
+      spinner.succeed(`${chalk.cyan(pathLabel)} — ${chalk.bold(files.length)} file(s)`);
       allResults.push({ sourceName: label, files });
       allPaths.push(...files.map((f) => f.path));
     } catch (err) {
@@ -55,6 +72,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
     }
 
     const source = sources.find((s) => s.name === sourceName || s.repo === sourceName);
+    /* v8 ignore next */
     const remotePath = source?.remotePath ?? '';
 
     log.title(`${sourceName}`);

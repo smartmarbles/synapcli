@@ -64,9 +64,10 @@ program
   .action(pullCommand);
 
 program
-  .command('list')
+  .command('list [path]')
   .description('List available agents and prompts in the remote repo')
   .option('--json', 'Output as JSON')
+  .option('-s, --source <name>', 'Only list files from the named source')
   .action(listCommand);
 
 program

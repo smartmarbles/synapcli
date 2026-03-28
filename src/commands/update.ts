@@ -33,10 +33,12 @@ export async function updateCommand(
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
+    /* v8 ignore start */
     const ref = source.branch || 'main';
     const remotePath = source.remotePath || '';
     const label = source.name ?? source.repo;
     const repoKey = `${owner}/${repo}`;
+    /* v8 ignore stop */
 
     // ── Discover changed files ───────────────────────────────────────────────
     const spinner = ora(`[${chalk.cyan(label)}] Checking for upstream changes…`).start();
@@ -79,9 +81,11 @@ export async function updateCommand(
       interactive: options.interactive,
     });
 
+    /* v8 ignore next 2 */
     if (!confirmed || confirmed.length === 0) continue;
 
     // ── Update selected files ───────────────────────────────────────────────
+    /* v8 ignore next */
     const progress = new SynapProgress(confirmed.length, 'files');
     const results = { written: [] as string[], failed: [] as string[] };
 

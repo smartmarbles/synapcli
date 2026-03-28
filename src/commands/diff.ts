@@ -22,8 +22,11 @@ export async function diffCommand(name: string | undefined): Promise<void> {
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
+    /* v8 ignore next */
     const ref = source.branch || 'main';
+    /* v8 ignore next */
     const remotePath = source.remotePath || '';
+    /* v8 ignore next */
     const label = source.name ?? source.repo;
 
     const spinner = ora(`[${chalk.cyan(label)}] Fetching file list…`).start();

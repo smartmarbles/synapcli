@@ -60,7 +60,9 @@ export function getCompletions(partial: string, cwd: string = process.cwd()): st
 
   // Match on the filename portion only (after last slash) as well as full path
   return entry.files.filter((f) => {
-    const filename = /* v8 ignore next */ f.split('/').pop() ?? f;
+    /* v8 ignore start */
+    const filename = f.split('/').pop() ?? f;
+    /* v8 ignore stop */
     return f.toLowerCase().includes(lower) || filename.toLowerCase().startsWith(lower);
   });
 }

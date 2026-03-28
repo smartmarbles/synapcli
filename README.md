@@ -82,6 +82,9 @@ synap deregister
 # 5. Browse available files in the remote repo
 synap list
 
+# 5b. List files under a specific subfolder
+synap list skills
+
 # 6. See the sync status of all tracked files
 synap status
 
@@ -125,13 +128,18 @@ synap doctor
 
 ---
 
-### `synap list`
-List all files available in the configured remote repository.
+### `synap list [path]`
+List all files available in the configured remote repository. Optionally scope the listing to a subdirectory by passing a path argument — this is appended to the configured `remotePath`.
 
 ```bash
-synap list            # human-readable output
-synap list --json     # machine-readable JSON for scripting
+synap list                          # human-readable output
+synap list --json                   # machine-readable JSON for scripting
+synap list skills                   # list files under the "skills" folder
+synap list --source Agents          # list only from the "Agents" source
+synap list guides --source Prompts  # list "guides" folder in the "Prompts" source
 ```
+
+The `--source` / `-s` option filters results to a single named source when multiple sources are registered. The source is matched by its configured name or by `owner/repo`.
 
 ---
 
@@ -213,7 +221,7 @@ synap completion bash           # print the bash script to stdout
 ---
 
 ### `synap register`
-Add one or more repositories to an existing `synap.config.json`. Automatically migrates a single-source config to the multi-source format if needed. Detects and skips duplicate repos.
+Add one or more repositories to an existing `synap.config.json`. Automatically migrates a single-source config to the multi-source format if needed. Detects and skips duplicates — a duplicate is defined as the same `repo` **and** `remotePath` combination, so you can register the same repository multiple times with different `remotePath` values to pull from different subdirectories.
 
 ```bash
 synap register

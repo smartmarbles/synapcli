@@ -75,7 +75,7 @@ describe('listCommand', () => {
   it('fetches and outputs file list in human-readable format', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
 
-    await listCommand({});
+    await listCommand(undefined, {});
 
     // Should have printed file names
     const output = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
@@ -86,7 +86,7 @@ describe('listCommand', () => {
   it('formats file sizes correctly (B, KB, MB)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
 
-    await listCommand({});
+    await listCommand(undefined, {});
 
     const output = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
     expect(output).toContain('150B');
@@ -97,7 +97,7 @@ describe('listCommand', () => {
   it('--json outputs raw JSON without formatting', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
 
-    await listCommand({ json: true });
+    await listCommand(undefined, { json: true });
 
     const jsonCall = consoleSpy.mock.calls.find(c => {
       try { JSON.parse(c[0]); return true; } catch { return false; }
@@ -112,7 +112,7 @@ describe('listCommand', () => {
   it('populates completion cache with file paths', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
 
-    await listCommand({});
+    await listCommand(undefined, {});
 
     expect(writeCompletionCache).toHaveBeenCalledWith(
       expect.arrayContaining(['summarizer.md', 'classifier.md', 'large-agent.md'])
@@ -129,7 +129,7 @@ describe('listCommand', () => {
     }, testDir);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
 
-    await listCommand({});
+    await listCommand(undefined, {});
 
     const output = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
     expect(output).toContain('summarizer.md');
@@ -138,24 +138,24 @@ describe('listCommand', () => {
 
   it('exits with code 4 on network error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
-    await expect(listCommand({})).rejects.toThrow('exit:4');
+    await expect(listCommand(undefined, {})).rejects.toThrow('exit:4');
   });
 
   it('exits with code 4 on GitHub 404', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeErrorResponse(404)));
-    await expect(listCommand({})).rejects.toThrow('exit:4');
+    await expect(listCommand(undefined, {})).rejects.toThrow('exit:4');
   });
 
   it('exits with code 2 when config file is missing', async () => {
     const { rmSync: rm } = await import('fs');
     rm(join(testDir, 'synap.config.json'));
-    await expect(listCommand({})).rejects.toThrow('exit:2');
+    await expect(listCommand(undefined, {})).rejects.toThrow('exit:2');
   });
 
   it('shows "No files found" warning when source returns empty file list', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([])));
 
-    await listCommand({});
+    await listCommand(undefined, {});
 
     const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(output).toContain('No files found');
@@ -177,10 +177,117 @@ describe('listCommand', () => {
       .mockResolvedValueOnce(makeListResponse(promptFiles))
     );
 
-    await listCommand({});
+    await listCommand(undefined, {});
 
     const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(output).toContain('agent.md');
     expect(output).toContain('prompt.md');
+  });
+
+  it('--source filters to a single named source', async () => {
+    saveConfig({
+      sources: [
+        { name: 'Agents',  repo: `${OWNER}/${REPO}`,  branch: BRANCH, remotePath: '', localOutput: '.' },
+        { name: 'Prompts', repo: 'acme/prompts', branch: BRANCH, remotePath: '', localOutput: '.' },
+      ],
+    }, testDir);
+
+    const agentFiles = [{ type: 'file', path: 'agent.md', sha: 'sha1', size: 10 }];
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse(agentFiles)));
+
+    await listCommand(undefined, { source: 'Agents' });
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('agent.md');
+    expect(output).not.toContain('prompt.md');
+    // Only one fetch call — the second source was never queried
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('--source exits with error when name does not match any source', async () => {
+    saveConfig({
+      sources: [
+        { name: 'Agents',  repo: `${OWNER}/${REPO}`,  branch: BRANCH, remotePath: '', localOutput: '.' },
+      ],
+    }, testDir);
+
+    await expect(listCommand(undefined, { source: 'Nope' })).rejects.toThrow('exit:2');
+  });
+
+  it('positional path scopes listing to a subfolder', async () => {
+    const subFiles = [
+      { type: 'file', path: 'skills/code-review.md', sha: 'sha-cr', size: 300 },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse(subFiles)));
+
+    await listCommand('skills', {});
+
+    const fetchUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(fetchUrl).toContain('/contents/skills');
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('code-review.md');
+  });
+
+  it('positional path appends to configured remotePath', async () => {
+    saveConfig({
+      repo: `${OWNER}/${REPO}`, branch: BRANCH, remotePath: 'docs', localOutput: '.',
+    }, testDir);
+    const subFiles = [
+      { type: 'file', path: 'docs/guides/intro.md', sha: 'sha-i', size: 100 },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse(subFiles)));
+
+    await listCommand('guides', {});
+
+    const fetchUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(fetchUrl).toContain('/contents/docs/guides');
+  });
+
+  it('--source matches by repo string when source has no name', async () => {
+    saveConfig({
+      sources: [
+        { repo: `${OWNER}/${REPO}`, branch: BRANCH, remotePath: '', localOutput: '.' },
+      ],
+    }, testDir);
+
+    const files = [{ type: 'file', path: 'agent.md', sha: 'sha1', size: 10 }];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse(files)));
+
+    await listCommand(undefined, { source: `${OWNER}/${REPO}` });
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('agent.md');
+  });
+
+  it('strips remotePath prefix from displayed file labels', async () => {
+    saveConfig({
+      repo: `${OWNER}/${REPO}`, branch: BRANCH, remotePath: 'agents', localOutput: '.',
+    }, testDir);
+
+    const files = [
+      { type: 'file', path: 'agents/summarizer.md', sha: 'sha-s', size: 100 },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse(files)));
+
+    await listCommand(undefined, {});
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('summarizer.md');
+  });
+
+  it('uses branch fallback when source has no branch', async () => {
+    saveConfig({
+      sources: [
+        { name: 'Agents', repo: `${OWNER}/${REPO}`, branch: '', remotePath: '', localOutput: '.' },
+      ],
+    }, testDir);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
+
+    await listCommand(undefined, {});
+
+    const fetchUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(fetchUrl).toContain('ref=main');
   });
 });

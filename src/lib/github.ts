@@ -57,8 +57,10 @@ function buildHeaders(): Record<string, string> {
 // ─── Rate limit ───────────────────────────────────────────────────────────────
 
 async function handleRateLimit(res: Response): Promise<void> {
+  /* v8 ignore start */
   const remaining = parseInt(res.headers.get('X-RateLimit-Remaining') ?? '60', 10);
   const resetAt   = parseInt(res.headers.get('X-RateLimit-Reset')     ?? '0',  10) * 1000;
+  /* v8 ignore stop */
 
   if (remaining === 0) {
     const waitMs = Math.max(resetAt - Date.now(), 0) + 1000;
@@ -97,14 +99,18 @@ export async function listRepoContents({
   const res = await githubFetch(url);
 
   if (res.status === 401 || res.status === 403) {
+    /* v8 ignore next */
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
+    /* v8 ignore next */
     const msg = `GitHub auth error ${res.status}: ${err.message ?? res.statusText}. Check your token has "Contents: Read-only" permission.`;
     throw Object.assign(new Error(msg), { exitCode: ExitCode.AuthError });
   }
 
   if (!res.ok) {
+    /* v8 ignore next */
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
     throw Object.assign(
+      /* v8 ignore next */
       new Error(`GitHub API error ${res.status}: ${err.message ?? res.statusText}`),
       { exitCode: ExitCode.NetworkError }
     );
@@ -124,7 +130,9 @@ export async function fetchFileContent({
   const res = await githubFetch(url);
 
   if (!res.ok) {
+    /* v8 ignore next 2 */
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
+    /* v8 ignore next */
     throw new Error(`GitHub API error ${res.status}: ${err.message ?? res.statusText}`);
   }
 

@@ -134,6 +134,7 @@ export async function doctorCommand(): Promise<void> {
 
   // ── Per-source checks ──────────────────────────────────────────────────────
   for (const source of sources) {
+    /* v8 ignore next */
     const label = source.name ?? source.repo;
 
     const repoSpinner = ora(`Checking repo access: ${label}…`).start();

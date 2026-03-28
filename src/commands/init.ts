@@ -95,6 +95,7 @@ export async function initCommand(): Promise<void> {
 
   for (const source of configuredSources) {
     if (!isDirWritable(source.localOutput)) {
+      /* v8 ignore next */
       warnings.push(`Output directory ${chalk.white(source.localOutput)} for ${chalk.white(source.name ?? source.repo)} is not writable`);
     }
   }

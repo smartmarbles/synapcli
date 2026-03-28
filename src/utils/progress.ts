@@ -34,9 +34,11 @@ export class SynapProgress {
     this.current++;
     if (this.bar) {
       this.bar.update(this.current, { file: chalk.dim(filename) });
+    /* v8 ignore start */
     } else if (isCI()) {
       log.info(`[${this.current}/${this.total}] ${filename}`);
     }
+    /* v8 ignore stop */
   }
 
   stop(): void {

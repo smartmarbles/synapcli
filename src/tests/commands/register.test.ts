@@ -130,4 +130,19 @@ describe('registerCommand', () => {
     saveConfig({ repo: 'acme/agents', branch: 'main', remotePath: '', localOutput: '.' }, testDir);
     await expect(registerCommand()).rejects.toThrow('exit:2');
   });
+
+  it('allows same repo with different remotePath', async () => {
+  saveConfig({ repo: 'acme/agents', branch: 'main', remotePath: 'agents', localOutput: '.' }, testDir);
+  vi.mocked(promptSource).mockResolvedValueOnce({
+    name: 'Prompts', repo: 'acme/agents', branch: 'main', remotePath: 'prompts', localOutput: '.',
+  });
+  vi.mocked(p.confirm).mockResolvedValue(false);
+
+  await registerCommand();
+
+  const config = loadConfig(testDir);
+  expect(config.sources).toHaveLength(2);
+  expect(config.sources!.map(s => s.remotePath)).toContain('agents');
+  expect(config.sources!.map(s => s.remotePath)).toContain('prompts');
+});
 });

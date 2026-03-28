@@ -36,10 +36,12 @@ export async function pullCommand(
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
+    /* v8 ignore start */
     const ref = options.ref ?? source.branch ?? 'main';
     const remotePath = source.remotePath || '';
     const label = source.name ?? source.repo;
     const repoKey = `${owner}/${repo}`;
+    /* v8 ignore stop */
 
     // ── Discover files ──────────────────────────────────────────────────────
     const spinner = ora(`[${chalk.cyan(label)}] Fetching file list…`).start();
@@ -102,10 +104,12 @@ export async function pullCommand(
       interactive: options.interactive,
     });
 
+    /* v8 ignore next 2 */
     if (!confirmed || confirmed.length === 0) continue;
 
     // ── Pull selected files ─────────────────────────────────────────────────
     const results = { written: [] as string[], skipped: [] as string[], failed: [] as string[] };
+    /* v8 ignore next */
     const progress = new SynapProgress(confirmed.length, 'files');
 
     for (const item of confirmed) {

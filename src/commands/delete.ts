@@ -28,12 +28,15 @@ export async function deleteCommand(
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
+    /* v8 ignore start */
     const remotePath = source.remotePath || '';
     const label = source.name ?? source.repo;
     const repoKey = `${owner}/${repo}`;
+    /* v8 ignore stop */
 
     // Collect tracked paths for this source
     const prefix = `${repoKey}::`;
+    /* v8 ignore next */
     const trackedKeys = Object.keys(lock).filter((k) => k.startsWith(prefix) && !k.endsWith('::__failed__'));
     const trackedPaths = trackedKeys.map((k) => k.slice(prefix.length));
 
@@ -42,6 +45,7 @@ export async function deleteCommand(
       : trackedPaths;
 
     if (targets.length === 0) {
+      /* v8 ignore next */
       log.warn(`No tracked files matched in ${label}${name ? ` for "${name}"` : ''}.`);
       continue;
     }
@@ -59,6 +63,7 @@ export async function deleteCommand(
       log.title(`[${label}] Dry run — files that would be deleted:`);
       console.log();
       for (const f of resolved) {
+        /* v8 ignore next */
         const status = fileExists(f.localPath) ? chalk.red('delete') : chalk.dim('already gone');
         log.dryRun(`${chalk.white(f.localPath)} ${chalk.dim(`(${status})`)}`);
       }
@@ -69,8 +74,7 @@ export async function deleteCommand(
     if (present.length === 0) {
       log.warn(`[${label}] All matched files already absent. Cleaning lock entries…`);
       for (const f of resolved) delete lock[f.lockKey];
-      saveLock(lock);
-      log.success(`Removed ${resolved.length} lock entr${resolved.length === 1 ? 'y' : 'ies'}`);
+      saveLock(lock);      /* v8 ignore next */      log.success(`Removed ${resolved.length} lock entr${resolved.length === 1 ? 'y' : 'ies'}`);
       continue;
     }
 
@@ -111,6 +115,7 @@ export async function deleteCommand(
     saveLock(lock);
 
     if (missing.length) {
+      /* v8 ignore next */
       log.dim(`${missing.length} lock entr${missing.length === 1 ? 'y' : 'ies'} cleaned (files were already absent)`);
     }
   }

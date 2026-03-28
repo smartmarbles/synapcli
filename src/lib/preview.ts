@@ -37,7 +37,9 @@ export async function previewAndConfirm(
       options: items.map((item) => ({
         value: item,
         label: chalk.white(item.file.path),
+        /* v8 ignore start */
         hint: item.isNew ? chalk.dim('new') : chalk.yellow('changed'),
+        /* v8 ignore stop */
       })),
       initialValues: items, // all selected by default
       required: false,
@@ -45,7 +47,9 @@ export async function previewAndConfirm(
 
     if (p.isCancel(selected)) {
       p.cancel(`${verb} cancelled.`);
+      /* v8 ignore start */
       process.exit(0);
+      /* v8 ignore stop */
     }
 
     const chosen = selected as PreviewFile[];

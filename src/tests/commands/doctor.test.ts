@@ -145,6 +145,15 @@ describe('doctorCommand', () => {
     expect(output).toContain('valid JSON');
   });
 
+  it('exits early when config has neither repo nor sources', async () => {
+    writeFileSync(join(testDir, 'synap.config.json'), JSON.stringify({}));
+
+    await doctorCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Config sources valid');
+  });
+
   it('shows caution when completion cache is missing', async () => {
     saveConfig(BASE_CONFIG, testDir);
     vi.stubGlobal('fetch', vi.fn()

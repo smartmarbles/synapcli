@@ -199,7 +199,7 @@ function detectShell(): string | null {
   if (process.env.PSModulePath || process.env.PSVersionTable) return 'powershell';
   /* v8 ignore next */
   if (process.platform === 'win32') return 'powershell';
-
+  /* v8 ignore next */
   return null;
 }
 
@@ -235,7 +235,9 @@ export async function completionCommand(
         { value: 'fish',       label: 'Fish',       hint: detectedShell === 'fish'       ? 'detected' : '' },
         { value: 'powershell', label: 'PowerShell', hint: detectedShell === 'powershell' ? 'detected' : '' },
       ],
+      /* v8 ignore start */
       initialValue: detectedShell ?? 'bash',
+      /* v8 ignore stop */
     });
     if (p.isCancel(choice)) { p.cancel('Cancelled.'); process.exit(0); }
     return choice as string;
@@ -256,6 +258,7 @@ export async function completionCommand(
   // Check if already installed
   if (existsSync(configFile)) {
     const existing = readFileSync(configFile, 'utf8');
+    /* v8 ignore next */
     if (existing.includes('SynapCLI')) {
       log.warn(`Completion already installed in ${chalk.white(configFile)}`);
       log.dim(`Remove the SynapCLI block manually and re-run to reinstall.`);

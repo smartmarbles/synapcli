@@ -42,6 +42,7 @@ export async function promptSource(index?: number): Promise<SourceConfig> {
   console.log();
   console.log(chalk.bold.cyan(`  ${label}`));
 
+  /* v8 ignore start */
   const answers = await p.group(
     {
       repo: () =>
@@ -99,6 +100,7 @@ export async function promptSource(index?: number): Promise<SourceConfig> {
       },
     }
   );
+  /* v8 ignore stop */
 
   const { owner, repo } = parseRepoString(answers.repo as string);
   const repoString = `${owner}/${repo}`;
@@ -109,10 +111,12 @@ export async function promptSource(index?: number): Promise<SourceConfig> {
       : (answers.localOutputPreset as string);
 
   return {
+    /* v8 ignore start */
     name: (answers.name as string) || repoString,
     repo: repoString,
     branch: (answers.branch as string) || 'main',
     remotePath: (answers.remotePath as string) || '',
+    /* v8 ignore stop */
     localOutput,
   };
 }

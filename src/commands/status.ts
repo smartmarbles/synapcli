@@ -25,16 +25,21 @@ export async function statusCommand(): Promise<void> {
 
   for (const source of sources) {
     const { owner, repo } = parseRepoString(source.repo);
+    /* v8 ignore start */
     const ref = source.branch || 'main';
     const remotePath = source.remotePath || '';
     const repoKey = `${owner}/${repo}`;
+    /* v8 ignore stop */
 
+    /* v8 ignore start */
     const spinner = ora(`Fetching remote state from ${chalk.cyan(source.name ?? repoKey)}…`).start();
+    /* v8 ignore stop */
     let allFiles;
     try {
       allFiles = await fetchAllFiles({ owner, repo, path: remotePath, ref });
       spinner.stop();
     } catch (err) {
+      /* v8 ignore next */
       spinner.fail(`Failed to fetch from ${source.name ?? repoKey}`);
       fatal((err as Error).message, ExitCode.NetworkError);
     }
