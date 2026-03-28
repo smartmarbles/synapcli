@@ -5,6 +5,7 @@ import { log, fatal } from '../utils/logger.js';
 afterEach(() => {
   setCI(false);
   vi.restoreAllMocks();
+  process.exitCode = undefined;
 });
 
 describe('logger — non-CI mode', () => {
@@ -105,22 +106,16 @@ describe('logger — CI mode', () => {
 });
 
 describe('fatal', () => {
-  it('logs error and calls process.exit with given code', () => {
-    const errSpy  = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
-      throw new Error(`exit:${code ?? 0}`);
-    });
+  it('logs error and sets process.exitCode', () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => fatal('something broke', 2)).toThrow('exit:2');
     expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('something broke'));
-    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(process.exitCode).toBe(2);
   });
 
   it('defaults to exit code 1 when no code given', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
-      throw new Error(`exit:${code ?? 0}`);
-    });
     expect(() => fatal('broken')).toThrow('exit:1');
-    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(process.exitCode).toBe(1);
   });
 });

@@ -13,9 +13,14 @@ export const log = {
 };
 
 /**
- * Print a fatal error and exit with the given code (default: GeneralError).
+ * Print a fatal error, set the process exit code, and throw to unwind the
+ * async call stack. The actual process.exit() is deferred to index.ts so that
+ * undici's internal handles have a chance to close before Node shuts down —
+ * calling process.exit() synchronously inside a fetch continuation causes a
+ * libuv assertion failure on Windows (src\\win\\async.c).
  */
 export function fatal(msg: string, code: ExitCodeValue = ExitCode.GeneralError): never {
   log.error(msg);
-  process.exit(code);
+  process.exitCode = code;
+  throw new Error(`exit:${code}`);
 }

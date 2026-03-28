@@ -115,4 +115,11 @@ program
   .description('Remove a registered repository from synap.config.json')
   .action(deregisterCommand);
 
-program.parse();
+// Use parseAsync so that async action errors propagate as rejected promises.
+// Never call process.exit() — just let the event loop drain naturally.
+// Node uses process.exitCode (set by fatal()) when exiting on its own, and
+// undici's internal handles are closed by then, avoiding the Windows libuv
+// assertion crash (src\win\async.c) triggered by a forced exit mid-request.
+program.parseAsync().catch(() => {
+  if (!process.exitCode) process.exitCode = 1;
+});

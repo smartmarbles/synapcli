@@ -56,7 +56,7 @@ beforeEach(() => {
   testDir = join(tmpdir(), `synap-list-${Date.now()}`);
   mkdirSync(testDir, { recursive: true });
   vi.spyOn(process, 'cwd').mockReturnValue(testDir);
-  vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+  vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
     throw new Error(`exit:${code ?? 0}`);
   });
   consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -78,7 +78,7 @@ describe('listCommand', () => {
     await listCommand(undefined, {});
 
     // Should have printed file names
-    const output = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('summarizer.md');
     expect(output).toContain('classifier.md');
   });
@@ -88,7 +88,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('150B');
     expect(output).toContain('2.0KB');
     expect(output).toContain('1.1MB');
@@ -99,7 +99,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, { json: true });
 
-    const jsonCall = consoleSpy.mock.calls.find(c => {
+    const jsonCall = consoleSpy.mock.calls.find((c: string[]) => {
       try { JSON.parse(c[0]); return true; } catch { return false; }
     });
     expect(jsonCall).toBeDefined();
@@ -131,7 +131,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('summarizer.md');
     expect(output).not.toContain('classifier.md');
   });
@@ -157,7 +157,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('No files found');
   });
 
@@ -179,7 +179,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('agent.md');
     expect(output).toContain('prompt.md');
   });
@@ -198,7 +198,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, { source: 'Agents' });
 
-    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('agent.md');
     expect(output).not.toContain('prompt.md');
     // Only one fetch call — the second source was never queried
@@ -226,7 +226,7 @@ describe('listCommand', () => {
     const fetchUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     expect(fetchUrl).toContain('/contents/skills');
 
-    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('code-review.md');
   });
 
@@ -257,7 +257,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, { source: `${OWNER}/${REPO}` });
 
-    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('agent.md');
   });
 
@@ -273,7 +273,7 @@ describe('listCommand', () => {
 
     await listCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const output = consoleSpy.mock.calls.map((c: string[]) => c.join(' ')).join('\n');
     expect(output).toContain('summarizer.md');
   });
 
