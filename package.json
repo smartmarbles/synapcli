@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@types/cli-progress": "3.11.6",
-    "@types/micromatch": "4.0.9",
+    "@types/micromatch": "4.0.10",
     "@types/node": "^22.12.0",
     "@vitest/coverage-v8": "4.1.0",
     "typescript": "5.9.3",
