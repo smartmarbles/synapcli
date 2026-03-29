@@ -1,4 +1,4 @@
-import micromatch from 'micromatch';
+import picomatch from 'picomatch';
 import type { RemoteFile, SourceConfig } from '../types.js';
 
 /**
@@ -9,11 +9,11 @@ export function filterFiles(files: RemoteFile[], source: SourceConfig): RemoteFi
   let result = files;
 
   if (source.include && source.include.length > 0) {
-    result = result.filter((f) => micromatch.isMatch(f.path, source.include!));
+    result = result.filter((f) => picomatch.isMatch(f.path, source.include!));
   }
 
   if (source.exclude && source.exclude.length > 0) {
-    result = result.filter((f) => !micromatch.isMatch(f.path, source.exclude!));
+    result = result.filter((f) => !picomatch.isMatch(f.path, source.exclude!));
   }
 
   return result;
