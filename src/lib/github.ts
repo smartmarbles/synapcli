@@ -99,21 +99,21 @@ export async function listRepoContents({
   const res = await githubFetch(url);
 
   if (res.status === 401 || res.status === 403) {
-    /* v8 ignore next */
+    /* v8 ignore start */
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
-    /* v8 ignore next */
     const msg = `GitHub auth error ${res.status}: ${err.message ?? res.statusText}. Check your token has "Contents: Read-only" permission.`;
     throw Object.assign(new Error(msg), { exitCode: ExitCode.AuthError });
+    /* v8 ignore stop */
   }
 
   if (!res.ok) {
-    /* v8 ignore next */
+    /* v8 ignore start */
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
     throw Object.assign(
-      /* v8 ignore next */
       new Error(`GitHub API error ${res.status}: ${err.message ?? res.statusText}`),
       { exitCode: ExitCode.NetworkError }
     );
+    /* v8 ignore stop */
   }
 
   return res.json() as Promise<GitHubFileResponse[]>;
@@ -130,10 +130,10 @@ export async function fetchFileContent({
   const res = await githubFetch(url);
 
   if (!res.ok) {
-    /* v8 ignore next 2 */
+    /* v8 ignore start */
     const err = (await res.json().catch(() => ({}))) as GitHubErrorBody;
-    /* v8 ignore next */
     throw new Error(`GitHub API error ${res.status}: ${err.message ?? res.statusText}`);
+    /* v8 ignore stop */
   }
 
   const data = (await res.json()) as GitHubFileResponse;

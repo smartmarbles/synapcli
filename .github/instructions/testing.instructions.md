@@ -21,18 +21,24 @@ applyTo: '**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/*.spec.tsx'
 
 ## Mocking Patterns
 
-**GitHub API** — mock at the module level:
+**GitHub API** — stub `fetch` globally at the test level:
 ```ts
-vi.mock('../../../lib/github.js');
+vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(...));
 ```
+This tests real `github.ts` logic and only isolates the network boundary.
 
 **File system** — mock `fs` functions via `vi.spyOn` or `vi.mock('fs')` as needed.
 
-**`fatal()` calls** — to assert a command calls `fatal()`, spy on `process.exitCode`:
+**`fatal()` calls** — to assert a command calls `fatal()`, spy on `process.exit` to convert it into a thrown error, then assert the action rejects:
 ```ts
-const exitSpy = vi.spyOn(process, 'exitCode', 'set');
+vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+  throw new Error(`exit:${code ?? 0}`);
+});
+// ...
+await expect(myCommand()).rejects.toThrow('exit:1');
 ```
-Then assert it was set to the expected `ExitCode` value and that the action threw.
+
+**Internal modules with side effects** (e.g. `retry`, `hooks`, `completionCache`, `progress`) — mocking these in command tests is acceptable to isolate units and avoid real I/O or TTY interactions. Do not mock purely computational lib functions.
 
 ## V8 Coverage
 

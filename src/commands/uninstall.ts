@@ -10,13 +10,15 @@ function removeFromFile(filePath: string): boolean {
   if (!existsSync(filePath)) return false;
 
   const content = readFileSync(filePath, 'utf8');
-  /* v8 ignore next 2 */
+  /* v8 ignore start */
   if (!content.includes(MARKER)) return false;
+  /* v8 ignore stop */
 
   const lines    = content.split('\n');
   const startIdx = lines.findIndex((l) => l.includes(MARKER));
-  /* v8 ignore next */
+  /* v8 ignore start */
   if (startIdx === -1) return false;
+  /* v8 ignore stop */
 
   let depth  = 0;
   let endIdx = startIdx;
@@ -40,10 +42,11 @@ function removeFromFile(filePath: string): boolean {
 
 function getPowerShellProfile(): string {
   try {
-    /* v8 ignore next 3 */
+    /* v8 ignore start */
     const cmd = process.platform === 'win32'
       ? 'powershell -NoProfile -Command "$PROFILE"'
       : 'pwsh -NoProfile -Command "$PROFILE"';
+    /* v8 ignore stop */
     return execSync(cmd, { encoding: 'utf8' }).trim();
   } catch {
     return join(homedir(), 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1');
@@ -66,8 +69,10 @@ export function runUninstall(): void {
         console.log(`Removed SynapCLI completion from ${profile}`);
         removed = true;
       }
-    } catch /* v8 ignore next */ {
+    } catch {
+      /* v8 ignore start */
       // Best-effort — never block uninstall
+      /* v8 ignore stop */
     }
   }
 
@@ -81,7 +86,9 @@ export function runUninstall(): void {
       rmSync(CACHE_DIR, { recursive: true, force: true });
       console.log(`Removed SynapCLI cache directory ${CACHE_DIR}`);
     }
-  } catch /* v8 ignore next */ {
+  } catch {
+    /* v8 ignore start */
     // Best-effort — never block uninstall
+    /* v8 ignore stop */
   }
 }

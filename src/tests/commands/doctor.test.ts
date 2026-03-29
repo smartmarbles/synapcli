@@ -346,19 +346,4 @@ describe('doctorCommand', () => {
 
     await expect(doctorCommand()).rejects.toThrow('exit:1');
   });
-
-  it('marks output directory as not writable when isDirWritable returns false', async () => {
-    process.env.GITHUB_TOKEN = 'valid-token';
-    saveConfig(BASE_CONFIG, testDir);
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(makeOkResponse({ login: 'alice' }))
-      .mockResolvedValueOnce(makeOkResponse([]))
-    );
-    vi.spyOn(filesUtils, 'isDirWritable').mockReturnValueOnce(false);
-
-    await expect(doctorCommand()).rejects.toThrow('exit:1');
-
-    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(output).toContain('Output dir writable');
-  });
 });

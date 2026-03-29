@@ -83,12 +83,14 @@ export async function updateCommand(
       interactive: options.interactive,
     });
 
-    /* v8 ignore next 2 */
+    /* v8 ignore start */
     if (!confirmed || confirmed.length === 0) continue;
+    /* v8 ignore stop */
 
     // ── Update selected files ───────────────────────────────────────────────
-    /* v8 ignore next */
+    /* v8 ignore start */
     const progress = new SynapProgress(confirmed.length, 'files');
+    /* v8 ignore stop */
     const results = { written: [] as string[], failed: [] as string[] };
 
     for (const item of confirmed) {
@@ -117,8 +119,7 @@ export async function updateCommand(
   console.log();
   if (totalWritten) log.success(`${totalWritten} file(s) updated`);
   if (totalFailed) {
-    log.error(`${totalFailed} file(s) failed`);
-    process.exit(ExitCode.GeneralError);
+    fatal(`${totalFailed} file(s) failed`, ExitCode.GeneralError);
   }
 
   if (totalWritten > 0) {

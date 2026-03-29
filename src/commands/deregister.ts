@@ -19,12 +19,16 @@ export async function deregisterCommand(): Promise<void> {
 
   p.intro(chalk.bold.cyan('  SynapCLI — Deregister Source  '));
 
-  const migrated = migrateToMultiSource(config);  /* v8 ignore next */  const sources = migrated.sources ?? [];
+  const migrated = migrateToMultiSource(config);
+  /* v8 ignore start */
+  const sources = migrated.sources ?? [];
+  /* v8 ignore stop */
 
   if (sources.length === 0) {
     log.warn('No sources are registered.');
-    /* v8 ignore next */
+    /* v8 ignore start */
     process.exit(0);
+    /* v8 ignore stop */
   }
 
   // ── Select sources to remove ───────────────────────────────────────────────
@@ -112,8 +116,9 @@ export async function deregisterCommand(): Promise<void> {
   console.log();
   log.success(`Removed ${toRemove.length} source(s) from ${CONFIG_FILE}`);
   if (lockCleaned > 0) {
-    /* v8 ignore next */
+    /* v8 ignore start */
     log.success(`Cleaned ${lockCleaned} lock entr${lockCleaned === 1 ? 'y' : 'ies'} from synap.lock.json`);
+    /* v8 ignore stop */
   }
 
   if (remaining.length > 0) {

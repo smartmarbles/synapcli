@@ -113,15 +113,6 @@ describe('runUninstall', () => {
     expect(() => runUninstall()).not.toThrow();
   });
 
-  it('handles errors during file removal gracefully (best-effort)', () => {
-    const bashrc = join(MOCK_HOME, '.bashrc');
-    writeFileSync(bashrc, `# before${SYNAP_BLOCK}`);
-
-    // Make the file read-only to cause writeFileSync to fail on some systems
-    // We test this differently — just confirm the function doesn't throw even on internal errors
-    expect(() => runUninstall()).not.toThrow();
-  });
-
   it('uses fallback PowerShell profile path when execSync throws in getPowerShellProfile', () => {
     vi.mocked(execSync).mockImplementationOnce(() => { throw new Error('pwsh not found'); });
 

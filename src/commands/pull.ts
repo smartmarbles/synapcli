@@ -106,13 +106,15 @@ export async function pullCommand(
       interactive: options.interactive,
     });
 
-    /* v8 ignore next 2 */
+    /* v8 ignore start */
     if (!confirmed || confirmed.length === 0) continue;
+    /* v8 ignore stop */
 
     // ── Pull selected files ─────────────────────────────────────────────────
     const results = { written: [] as string[], skipped: [] as string[], failed: [] as string[] };
-    /* v8 ignore next */
+    /* v8 ignore start */
     const progress = new SynapProgress(confirmed.length, 'files');
+    /* v8 ignore stop */
 
     for (const item of confirmed) {
       const { file, localPath } = item;
@@ -177,8 +179,7 @@ export async function pullCommand(
   if (globalResults.written)  log.success(`${globalResults.written} file(s) written`);
   if (globalResults.skipped)  log.warn(`${globalResults.skipped} file(s) skipped`);
   if (globalResults.failed) {
-    log.error(`${globalResults.failed} file(s) failed — run ${chalk.white('synap pull --retry-failed')} to retry`);
-    process.exit(ExitCode.GeneralError);
+    fatal(`${globalResults.failed} file(s) failed — run ${chalk.white('synap pull --retry-failed')} to retry`, ExitCode.GeneralError);
   }
 
   if (globalResults.written > 0) {

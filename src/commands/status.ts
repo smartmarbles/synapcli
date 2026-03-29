@@ -39,8 +39,9 @@ export async function statusCommand(): Promise<void> {
       allFiles = await fetchAllFiles({ owner, repo, path: remotePath, ref });
       spinner.stop();
     } catch (err) {
-      /* v8 ignore next */
+      /* v8 ignore start */
       spinner.fail(`Failed to fetch from ${source.name ?? repoKey}`);
+      /* v8 ignore stop */
       fatal((err as Error).message, ExitCode.NetworkError);
     }
 

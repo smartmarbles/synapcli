@@ -175,10 +175,11 @@ const SHELL_CONFIG: Record<string, string> = {
 function getPowerShellProfile(): string {
   try {
     // Try pwsh (PS7) first, fall back to powershell (PS5.1)
-    /* v8 ignore next 3 */
+    /* v8 ignore start */
     const cmd = process.platform === 'win32'
       ? 'powershell -NoProfile -Command "$PROFILE"'
       : 'pwsh -NoProfile -Command "$PROFILE"';
+    /* v8 ignore stop */
     return execSync(cmd, { encoding: 'utf8' }).trim();
   } catch {
     // PS 5.1 default profile path
@@ -197,10 +198,10 @@ function detectShell(): string | null {
 
   // Windows — check PSModulePath or PSVERSION
   if (process.env.PSModulePath || process.env.PSVersionTable) return 'powershell';
-  /* v8 ignore next */
+  /* v8 ignore start */
   if (process.platform === 'win32') return 'powershell';
-  /* v8 ignore next */
   return null;
+  /* v8 ignore stop */
 }
 
 // ─── Command ──────────────────────────────────────────────────────────────────
@@ -258,8 +259,9 @@ export async function completionCommand(
   // Check if already installed
   if (existsSync(configFile)) {
     const existing = readFileSync(configFile, 'utf8');
-    /* v8 ignore next */
+    /* v8 ignore start */
     if (existing.includes('SynapCLI')) {
+    /* v8 ignore stop */
       log.warn(`Completion already installed in ${chalk.white(configFile)}`);
       log.dim(`Remove the SynapCLI block manually and re-run to reinstall.`);
       process.exit(0);

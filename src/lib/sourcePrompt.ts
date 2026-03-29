@@ -94,9 +94,11 @@ export async function promptSource(index?: number): Promise<SourceConfig> {
           : Promise.resolve(undefined),
     },
     {
-      onCancel: /* v8 ignore next 4 */ () => {
+      onCancel: () => {
+        /* v8 ignore start */
         p.cancel('Cancelled.');
         process.exit(0);
+        /* v8 ignore stop */
       },
     }
   );

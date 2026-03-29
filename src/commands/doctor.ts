@@ -7,7 +7,8 @@ import { homedir } from 'os';
 import { loadConfig, parseRepoString, resolvedSources, CONFIG_FILE } from '../lib/config.js';
 import { validateToken, hasToken, listRepoContents } from '../lib/github.js';
 import { isDirWritable } from '../utils/files.js';
-import { log } from '../utils/logger.js';
+import { log, fatal } from '../utils/logger.js';
+import { ExitCode } from '../types.js';
 
 interface CheckResult {
   label: string;
@@ -36,8 +37,9 @@ export async function doctorCommand(): Promise<void> {
   results.push(check(
     `Node.js version (${nodeVersion})`,
     major >= 18,
-    /* v8 ignore next */
+    /* v8 ignore start */
     major < 18 ? 'Node.js 18+ is required' : undefined
+    /* v8 ignore stop */
   ));
 
   // ── Git available ──────────────────────────────────────────────────────────
@@ -134,8 +136,9 @@ export async function doctorCommand(): Promise<void> {
 
   // ── Per-source checks ──────────────────────────────────────────────────────
   for (const source of sources) {
-    /* v8 ignore next */
+    /* v8 ignore start */
     const label = source.name ?? source.repo;
+    /* v8 ignore stop */
 
     const repoSpinner = ora(`Checking repo access: ${label}…`).start();
     try {
@@ -164,8 +167,7 @@ export async function doctorCommand(): Promise<void> {
     log.success('All checks passed. SynapCLI is ready to use.');
   } else {
     console.log();
-    log.warn(`${failed.length} check(s) failed. Fix the issues above and re-run ${chalk.white('synap doctor')}.`);
-    process.exit(1);
+    fatal(`${failed.length} check(s) failed. Fix the issues above and re-run ${chalk.white('synap doctor')}.`, ExitCode.GeneralError);
   }
 }
 

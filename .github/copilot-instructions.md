@@ -29,24 +29,25 @@ Config files: `synap.config.json` (user config), `synap.lock.json` (SHA tracking
 ## Code Conventions
 
 ### TypeScript
-- All types are declared in `src/types.ts` — add new types there, not inline
+- Types used only within a single file may be declared inline; types shared across modules belong in `src/types.ts`
 - Use `.js` extensions on all local imports (required for ESM/NodeNext)
 - Commands delegate to lib functions — keep command files thin
 
 ### Error Handling
-- Use `fatal(msg, code)` from `src/utils/logger.ts` for all unrecoverable errors — it sets `process.exitCode` and throws to unwind the stack; **never call `process.exit()` directly**
+- Use `fatal(msg, code)` from `src/utils/logger.ts` for all unrecoverable errors — it calls `log.error()`, sets `process.exitCode`, and throws to unwind the stack; **never call `process.exit()` directly for error exits**
+- `process.exit(0)` is acceptable for clean user-cancellation flows (e.g. user presses Escape in a prompt)
 - Exit codes are defined in `ExitCode` enum in `src/types.ts`
 
 ### Logging
-- Use `log.*` from `src/utils/logger.ts` — never use `console.log/error` directly in commands or lib
+- Use `log.*` from `src/utils/logger.ts` for status/progress messages — never use `console.log/error` directly for these
+- Use `console.log()` for structured content output (file listings, JSON output, diffs, blank-line spacing between sections) — this is an established pattern throughout all commands
 - Output adapts automatically to CI mode via `isCI()` from `src/utils/context.ts`
-- CI mode: plain text prefixes (`[INFO]`, `[OK]`, `[WARN]`, `[ERR]`, `[DRY-RUN]`)
-- Interactive mode: chalk-colored symbols (`ℹ`, `✔`, `⚠`, `✖`, `◌`)
 
 ### Config & Lock
 - Load config with `loadConfig()` from `src/lib/config.ts` — always normalise to `SourceConfig[]` via `resolvedSources()`
-- Lock keys are namespaced: `"owner/repo::path/to/file"` — use `lockKey(repo, filePath)` to build them
+- Lock keys are namespaced: `"owner/repo::path/to/file"` — use `lockKey(repo, filePath)` to build full keys; prefix-only lookups (e.g. `key.startsWith(\`${repo}::\`)`) are acceptable since `lockKey()` cannot produce a prefix string
 - Both config and lock are loaded fresh per command invocation — do not cache at module level
+- Exception: `doctor.ts` reads config/lock raw JSON via `readFileSync` for syntax validation before calling `loadConfig()` — this is intentional for health-check semantics
 
 ### Glob Matching
 - Use `picomatch.isMatch()` via `src/lib/filter.ts` — the project uses `picomatch` directly, not `micromatch`
@@ -68,7 +69,7 @@ Update `TESTPLAN.md` when adding new commands, changing coverage requirements, o
 ## Dependency Conventions
 
 - All dependency versions are pinned exactly (no `^` or `~`)
-- `@types/*` packages: major.minor should match the corresponding package's major.minor
+- `@types/*` packages: major.minor should match the corresponding package where a matching version exists on npm
 - **Minimise the dependency footprint** — before adding a new package:
   - If the functionality is already provided by a transitive dependency (e.g. a sub-package of something already installed), use that directly rather than adding a new top-level dependency
   - If only a single small function is needed, implement it inline rather than pulling in a package

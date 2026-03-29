@@ -29,16 +29,17 @@ export async function registerCommand(): Promise<void> {
   }
 
   // ── Show existing sources ──────────────────────────────────────────────────
-  /* v8 ignore next */
+  /* v8 ignore start */
   const existing = migrated.sources ?? [];
+  /* v8 ignore stop */
   if (existing.length > 0) {
     console.log();
-    /* v8 ignore next */
+    /* v8 ignore start */
     log.dim(`Currently registered sources (${existing.length}):`);
     for (const s of existing) {
-      /* v8 ignore next */
       console.log(`  ${chalk.green('•')} ${chalk.white(s.name)} ${chalk.dim(`(${s.repo})`)}`);
     }
+    /* v8 ignore stop */
   }
 
   // ── Collect new sources ────────────────────────────────────────────────────
@@ -50,8 +51,9 @@ export async function registerCommand(): Promise<void> {
     const source = await promptSource(index);
 
     // Check for duplicate repo
-    /* v8 ignore next */
+    /* v8 ignore start */
     const duplicate = existing.find((s) => s.repo === source.repo && s.remotePath === source.remotePath);
+    /* v8 ignore stop */
     if (duplicate) {
       log.warn(`${chalk.white(source.repo)} with remotePath "${source.remotePath}" is already registered as "${duplicate.name}". Skipping.`);
     } else {

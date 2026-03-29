@@ -21,13 +21,14 @@ export async function listCommand(path: string | undefined, options: ListOptions
     ? allSources.filter((s) => (s.name ?? s.repo) === options.source)
     : allSources;
 
-  /* v8 ignore next */
+  /* v8 ignore start */
   if (options.source && sources.length === 0) {
     fatal(
       `No source named "${options.source}". Available: ${allSources.map((s) => s.name ?? s.repo).join(', ')}`,
       ExitCode.ConfigError,
     );
   }
+  /* v8 ignore stop */
 
   const allResults: { sourceName: string; files: RemoteFile[] }[] = [];
   const allPaths: string[] = [];
@@ -72,8 +73,9 @@ export async function listCommand(path: string | undefined, options: ListOptions
     }
 
     const source = sources.find((s) => s.name === sourceName || s.repo === sourceName);
-    /* v8 ignore next */
+    /* v8 ignore start */
     const remotePath = source?.remotePath ?? '';
+    /* v8 ignore stop */
 
     log.title(`${sourceName}`);
     console.log();

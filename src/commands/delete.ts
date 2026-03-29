@@ -36,8 +36,9 @@ export async function deleteCommand(
 
     // Collect tracked paths for this source
     const prefix = `${repoKey}::`;
-    /* v8 ignore next */
+    /* v8 ignore start */
     const trackedKeys = Object.keys(lock).filter((k) => k.startsWith(prefix) && !k.endsWith('::__failed__'));
+    /* v8 ignore stop */
     const trackedPaths = trackedKeys.map((k) => k.slice(prefix.length));
 
     const targets = name
@@ -45,8 +46,9 @@ export async function deleteCommand(
       : trackedPaths;
 
     if (targets.length === 0) {
-      /* v8 ignore next */
+      /* v8 ignore start */
       log.warn(`No tracked files matched in ${label}${name ? ` for "${name}"` : ''}.`);
+      /* v8 ignore stop */
       continue;
     }
 
@@ -63,8 +65,9 @@ export async function deleteCommand(
       log.title(`[${label}] Dry run — files that would be deleted:`);
       console.log();
       for (const f of resolved) {
-        /* v8 ignore next */
+        /* v8 ignore start */
         const status = fileExists(f.localPath) ? chalk.red('delete') : chalk.dim('already gone');
+        /* v8 ignore stop */
         log.dryRun(`${chalk.white(f.localPath)} ${chalk.dim(`(${status})`)}`);
       }
       console.log();
@@ -74,7 +77,10 @@ export async function deleteCommand(
     if (present.length === 0) {
       log.warn(`[${label}] All matched files already absent. Cleaning lock entries…`);
       for (const f of resolved) delete lock[f.lockKey];
-      saveLock(lock);      /* v8 ignore next */      log.success(`Removed ${resolved.length} lock entr${resolved.length === 1 ? 'y' : 'ies'}`);
+      saveLock(lock);
+      /* v8 ignore start */
+      log.success(`Removed ${resolved.length} lock entr${resolved.length === 1 ? 'y' : 'ies'}`);
+      /* v8 ignore stop */
       continue;
     }
 
@@ -115,16 +121,16 @@ export async function deleteCommand(
     saveLock(lock);
 
     if (missing.length) {
-      /* v8 ignore next */
+      /* v8 ignore start */
       log.dim(`${missing.length} lock entr${missing.length === 1 ? 'y' : 'ies'} cleaned (files were already absent)`);
+      /* v8 ignore stop */
     }
   }
 
   console.log();
   if (totalDeleted) log.success(`${totalDeleted} file(s) deleted`);
   if (totalFailed) {
-    log.error(`${totalFailed} file(s) failed to delete`);
-    process.exit(ExitCode.GeneralError);
+    fatal(`${totalFailed} file(s) failed to delete`, ExitCode.GeneralError);
   }
 
   log.dim(`\nRun ${chalk.white('synap pull')} to restore, or ${chalk.white('synap list')} to browse.`);

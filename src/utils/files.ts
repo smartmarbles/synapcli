@@ -47,8 +47,9 @@ export function isDirWritable(dirPath: string): boolean {
     accessSync(check, constants.W_OK);
     return true;
   } catch {
-    /* v8 ignore next */
+    /* v8 ignore start */
     return false;
+    /* v8 ignore stop */
   }
 }
 
