@@ -159,7 +159,7 @@ Output groups files into four states:
 ---
 
 ### `synap pull [name]`
-Download files from the remote repo to your local output directory. Shows a status preview and asks for confirmation before writing. Supports tab completion on the name argument.
+Download files from the remote repo to your local output directory. Shows a status preview and asks for confirmation before writing. If any tracked files have been modified locally since the last pull, the preview highlights them with a warning so you can decide whether to overwrite. Supports tab completion on the name argument.
 
 ```bash
 synap pull                      # pull all files (with preview + confirm)
@@ -186,7 +186,7 @@ synap diff summarizer  # diff files matching "summarizer"
 ---
 
 ### `synap update [name]`
-Pull only files whose upstream SHA has changed. Skips unchanged files entirely. Supports tab completion on the name argument.
+Pull only files whose upstream SHA has changed. Skips unchanged files entirely. If any tracked files have been modified locally since the last pull, the preview highlights them with a warning before overwriting. Supports tab completion on the name argument.
 
 ```bash
 synap update                    # update all changed files (with preview + confirm)
@@ -309,6 +309,22 @@ After every pull, SynapCLI writes `synap.lock.json` recording the exact commit S
 ```
 
 **Commit this file.** It ensures reproducible pulls and powers `status`, `diff`, `update`, and `delete`.
+
+---
+
+## Local Modification Detection
+
+SynapCLI detects when you've edited a tracked file locally since the last pull. Before overwriting, both `pull` and `update` compute the Git blob SHA of your local file and compare it to the SHA stored in the lockfile. If they differ, the file is flagged as **locally modified** in the confirmation preview:
+
+```
+  ⚠ Locally modified (1):
+    ! agents/summarizer.md → ./summarizer.md — local changes will be overwritten
+```
+
+This gives you a chance to back up your changes or cancel before they are replaced by the remote version.
+
+- In **interactive mode** (`--interactive`), locally modified files are labeled in the checklist so you can deselect them individually.
+- With **`--force`**, all prompts are skipped and files are overwritten without warning — use with caution.
 
 ---
 

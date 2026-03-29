@@ -227,6 +227,43 @@ describe('updateCommand', () => {
     expect(existsSync(join(testDir, 'classifier.md'))).toBe(false);
   });
 
+  it('flags locally modified files in the preview before updating', async () => {
+    // Lock has sha for "# Summarizer v1", but user edited the file locally
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: '951fcb40abea7648fcf66e1ada728a535b68f084', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+    writeFileSync(join(testDir, 'summarizer.md'), '# Summarizer v1 — my local edits');
+
+    // Remote has new version (sha-summ-v2 differs from lock SHA)
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeListResponse([{ type: 'file', path: 'summarizer.md', sha: 'sha-summ-v2', size: 150 }]))
+      .mockResolvedValueOnce(makeFileResponse('summarizer.md', 'sha-summ-v2', CONTENTS['summarizer.md'])));
+
+    // Use confirm mock to capture the preview showing (non-force mode)
+    const { confirm } = await import('@clack/prompts');
+    vi.mocked(confirm).mockResolvedValueOnce(true);
+
+    await updateCommand(undefined, {});
+
+    // File was overwritten with remote content after confirmation
+    expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe(CONTENTS['summarizer.md']);
+  });
+
+  it('--force overwrites locally modified files without prompting', async () => {
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: '951fcb40abea7648fcf66e1ada728a535b68f084', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+    writeFileSync(join(testDir, 'summarizer.md'), '# Summarizer v1 — my local edits');
+
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeListResponse([{ type: 'file', path: 'summarizer.md', sha: 'sha-summ-v2', size: 150 }]))
+      .mockResolvedValueOnce(makeFileResponse('summarizer.md', 'sha-summ-v2', CONTENTS['summarizer.md'])));
+
+    await updateCommand(undefined, { force: true });
+
+    expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe(CONTENTS['summarizer.md']);
+  });
+
   it('postpull hook runs after a successful update', async () => {
     saveConfig({ ...BASE_CONFIG, postpull: 'echo updated' }, testDir);
     saveLock({

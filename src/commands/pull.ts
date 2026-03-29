@@ -10,7 +10,7 @@ import { filterFiles } from '../lib/filter.js';
 import { runPostPullHook } from '../lib/hooks.js';
 import { previewAndConfirm, type PreviewFile } from '../lib/preview.js';
 import { writeCompletionCache } from '../lib/completionCache.js';
-import { writeFile, readLocalFile, resolveLocalPath } from '../utils/files.js';
+import { writeFile, readLocalFile, resolveLocalPath, computeGitBlobSha } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { SynapProgress } from '../utils/progress.js';
 import { isCI } from '../utils/context.js';
@@ -90,12 +90,14 @@ export async function pullCommand(
     }
 
     // ── Build preview items ─────────────────────────────────────────────────
-    const previewItems: PreviewFile[] = targets.map((file) => ({
-      file,
-      localPath: resolveLocalPath({ remotePath: file.path, remoteBase: remotePath, localOutput: source.localOutput }),
-      isNew: !lock[lockKey(repoKey, file.path)],
-      source,
-    }));
+    const previewItems: PreviewFile[] = targets.map((file) => {
+      const localPath = resolveLocalPath({ remotePath: file.path, remoteBase: remotePath, localOutput: source.localOutput });
+      const key = lockKey(repoKey, file.path);
+      const entry = lock[key];
+      const localSha = computeGitBlobSha(localPath);
+      const locallyModified = !!entry && localSha !== null && localSha !== entry.sha;
+      return { file, localPath, isNew: !entry, source, locallyModified };
+    });
 
     // ── Status preview + confirmation (or interactive multiselect) ──────────
     const confirmed = await previewAndConfirm(previewItems, {

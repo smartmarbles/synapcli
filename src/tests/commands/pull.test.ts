@@ -304,6 +304,38 @@ describe('pullCommand', () => {
     expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe('pre-existing content');
   });
 
+  it('flags locally modified tracked files in the preview before pulling', async () => {
+    // Lock tracks summarizer with the correct blob SHA for its content
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: 'fa1fbd6ba5e2685ee726fe5b5579c336afaf1f9c', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+    // User edited the file locally — content no longer matches the lock SHA
+    writeFileSync(join(testDir, 'summarizer.md'), '# Summarizer\nSummarizes text.\n\n## My local notes');
+
+    setupFetch();
+
+    const { confirm } = await import('@clack/prompts');
+    vi.mocked(confirm).mockResolvedValueOnce(true);
+
+    await pullCommand(undefined, {});
+
+    // File was overwritten after the user confirmed
+    expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe(CONTENTS['summarizer.md']);
+  });
+
+  it('--force overwrites locally modified tracked files without prompting', async () => {
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: 'fa1fbd6ba5e2685ee726fe5b5579c336afaf1f9c', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+    writeFileSync(join(testDir, 'summarizer.md'), '# Summarizer\nSummarizes text.\n\n## My local notes');
+
+    setupFetch();
+
+    await pullCommand(undefined, { force: true });
+
+    expect(readFileSync(join(testDir, 'summarizer.md'), 'utf8')).toBe(CONTENTS['summarizer.md']);
+  });
+
   it('logs warning and continues when no files match name filter', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse()));
 

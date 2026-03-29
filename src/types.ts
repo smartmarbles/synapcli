@@ -105,6 +105,8 @@ export interface PreviewFile {
   localPath: string;
   isNew: boolean;
   source: SourceConfig;
+  /** True when the local file has been edited since last pull */
+  locallyModified?: boolean;
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────────

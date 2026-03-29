@@ -7,6 +7,7 @@ import {
   accessSync,
   constants,
 } from 'fs';
+import { createHash } from 'crypto';
 import { dirname, join } from 'path';
 import type { ResolveLocalPathParams } from '../types.js';
 
@@ -73,4 +74,16 @@ export function resolveLocalPath({
   }
 
   return join(cwd, localOutput, relative);
+}
+
+/**
+ * Compute the Git blob SHA-1 for a file on disk.
+ * Git hashes blobs as: sha1("blob {size}\0{content}")
+ * Returns null if the file does not exist.
+ */
+export function computeGitBlobSha(filePath: string): string | null {
+  if (!existsSync(filePath)) return null;
+  const content = readFileSync(filePath);
+  const header = `blob ${content.length}\0`;
+  return createHash('sha1').update(header).update(content).digest('hex');
 }

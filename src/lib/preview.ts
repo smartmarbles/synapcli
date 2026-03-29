@@ -38,7 +38,9 @@ export async function previewAndConfirm(
         value: item,
         label: chalk.white(item.file.path),
         /* v8 ignore start */
-        hint: item.isNew ? chalk.dim('new') : chalk.yellow('changed'),
+        hint: item.locallyModified
+          ? chalk.red('locally modified — will be overwritten')
+          : item.isNew ? chalk.dim('new') : chalk.yellow('changed'),
         /* v8 ignore stop */
       })),
       initialValues: items, // all selected by default
@@ -63,10 +65,19 @@ export async function previewAndConfirm(
   }
 
   // ── Default: show preview then confirm ────────────────────────────────────
-  const newFiles     = items.filter((i) => i.isNew);
-  const changedFiles = items.filter((i) => !i.isNew);
+  const newFiles          = items.filter((i) => i.isNew);
+  const changedFiles      = items.filter((i) => !i.isNew && !i.locallyModified);
+  const locallyModified   = items.filter((i) => i.locallyModified);
 
   console.log();
+
+  if (locallyModified.length > 0) {
+    console.log(chalk.bold.red(`  ⚠ Locally modified (${locallyModified.length}):`));
+    for (const item of locallyModified) {
+      console.log(`    ${chalk.red('!')} ${chalk.white(item.file.path)} ${chalk.dim(`→ ${item.localPath}`)} ${chalk.red('— local changes will be overwritten')}`);
+    }
+    console.log();
+  }
 
   if (newFiles.length > 0) {
     console.log(chalk.bold.cyan(`  New files (${newFiles.length}):`));

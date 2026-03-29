@@ -3,7 +3,7 @@
 This test plan covers every capability of SynapCLI. Tests must be executed in the order listed — many tests depend on state created by earlier ones (lockfile, completion cache, config format, etc.).
 
 **Prerequisites before starting:**
-- Node.js 18+ installed
+- Node.js 20.12+ installed (minimum enforced by the package — older Node versions will be rejected at install or runtime)
 - Git installed
 - A GitHub repository with at least 2–3 files to pull from (can be public)
 - A GitHub token configured (for private repo tests)
@@ -191,7 +191,61 @@ synap list --json
 
 ---
 
-### 4.3 — Doctor after list (cache now exists)
+### 4.3 — List with --source filter
+```bash
+synap list --source <name>
+```
+**Expected:**
+- Only files from the named source are shown
+- Other sources are skipped entirely
+- Source can be matched by its `name` field or by its `repo` string (e.g. `owner/repo`)
+
+---
+
+### 4.4 — List with -s shortcut
+```bash
+synap list -s <name>
+```
+**Expected:** Same behaviour as `--source` flag.
+
+---
+
+### 4.5 — List with invalid --source
+```bash
+synap list --source nonexistent
+```
+**Expected:** Error message listing available source names. Exits with code 2 (ConfigError).
+
+---
+
+### 4.6 — List with positional path argument
+```bash
+synap list skills/
+```
+**Expected:**
+- Only files under the `skills/` subdirectory are shown
+- Spinner label includes the path (e.g. `sourcename/skills/`)
+- If the source has a `remotePath` configured, the positional path is appended to it
+
+---
+
+### 4.7 — List combining --source and path
+```bash
+synap list skills/ --source <name>
+```
+**Expected:** Only files under `skills/` from the specified source are listed.
+
+---
+
+### 4.8 — List path with no matches
+```bash
+synap list nonexistent-folder/
+```
+**Expected:** Spinner completes, shows 0 file(s). Warning that no files were found.
+
+---
+
+### 4.9 — Doctor after list (cache now exists)
 ```bash
 synap doctor
 ```
@@ -302,6 +356,39 @@ synap pull
 
 ---
 
+### 6.11 — Local modification warning on pull
+After a successful pull, edit one of the pulled files locally:
+```bash
+echo "my local addition" >> <output-dir>/somefile.md
+synap pull
+```
+**Expected:**
+- Preview shows a red **⚠ Locally modified** section listing the edited file
+- Warning reads: `! somefile.md → <path> — local changes will be overwritten`
+- User is prompted for confirmation before overwriting
+- Confirming overwrites the file with the remote version
+- Declining cancels the pull
+
+---
+
+### 6.12 — Local modification warning skipped with --force
+```bash
+echo "my local addition" >> <output-dir>/somefile.md
+synap pull --force
+```
+**Expected:** File overwritten without any warning or prompt — `--force` bypasses the local modification check.
+
+---
+
+### 6.13 — Local modification warning in interactive mode
+```bash
+echo "my local addition" >> <output-dir>/somefile.md
+synap pull --interactive
+```
+**Expected:** Multiselect checklist shows the locally modified file with a hint: `locally modified — will be overwritten`. User can deselect it to skip overwriting.
+
+---
+
 ### 6.10 — CI mode pull
 ```bash
 synap pull --ci --force
@@ -384,27 +471,41 @@ synap update
 
 ---
 
-### 9.2 — Update after local modification
-Edit a pulled file, then run:
+### 9.2 — Update after upstream change with locally modified file
+Edit a pulled file locally, then trigger an upstream change (e.g. push a change to the remote repo), then run:
 ```bash
+echo "my local edit" >> <output-dir>/somefile.md
 synap update
 ```
 **Expected:**
-- Changed file listed with `~` prefix in preview
+- Preview shows a red **⚠ Locally modified** section listing the file
+- Warning reads: `! somefile.md → <path> — local changes will be overwritten`
+- Changed upstream files without local edits shown under the normal **Changed files** section with `~` prefix
 - Confirmation prompt shown
-- File restored to upstream version after confirming
+- Confirming overwrites the locally modified file with the remote version
+- Declining cancels the update
 
 ---
 
-### 9.3 — Update --interactive
+### 9.3 — Update --force skips local modification warning
 ```bash
+echo "my local edit" >> <output-dir>/somefile.md
+synap update --force
+```
+**Expected:** File overwritten without any warning or prompt — `--force` bypasses the local modification check.
+
+---
+
+### 9.4 — Update --interactive with locally modified files
+```bash
+echo "my local edit" >> <output-dir>/somefile.md
 synap update --interactive
 ```
-**Expected:** Multiselect checklist shown for changed files. Can choose which to update.
+**Expected:** Multiselect checklist shows locally modified files with hint `locally modified — will be overwritten`. User can deselect them individually to preserve local changes.
 
 ---
 
-### 9.4 — Update --force
+### 9.5 — Update --force (no local modifications)
 ```bash
 synap update --force
 ```
@@ -442,13 +543,25 @@ cat synap.config.json
 ```bash
 synap register
 ```
-Enter the same repo already registered.
+Enter the same repo and remotePath already registered.
 
 **Expected:** "already registered" warning shown, source skipped. Config unchanged.
 
 ---
 
-### 10.4 — List with multiple sources
+### 10.4 — Register same repo with different remotePath
+```bash
+synap register
+```
+Enter the same repo but a different `remotePath` (e.g. different subdirectory of the same repo).
+
+**Expected:**
+- Source is accepted (not flagged as duplicate)
+- Both entries for the same repo appear in `synap.config.json`, each with its own `remotePath`
+
+---
+
+### 10.5 — List with multiple sources
 ```bash
 synap list
 ```
@@ -717,18 +830,35 @@ echo $LASTEXITCODE   # PowerShell
 
 ---
 
+### 18.4 — Clean error exit on GitHub API failure (Windows regression)
+Trigger a deliberate 404 by passing a path that does not exist:
+```bash
+synap list nonexistent-path-xyz
+```
+**Expected (all platforms, especially Windows):**
+- Error message printed: `✖ GitHub API error 404: Not Found`
+- Process exits with code 4
+- **No** `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` crash
+- No unhandled exception or libuv assertion in `src\win\async.c`
+
+This test guards against a Windows-specific crash that occurred when `process.exit()` was called synchronously inside a fetch promise continuation. The fix uses `program.parseAsync()` and lets Node exit naturally after the event loop drains.
+
+---
+
 ## Section 19 — Multi-Source End to End
 
 ### 19.1 — Full workflow with two sources
 ```bash
 synap init   # configure two sources
 synap list   # verify both sources show files
+synap list -s <source-name>  # verify only one source shown
+synap list skills/           # verify path scoping works
 synap status # verify all files show as not-pulled
 synap pull   # pull all files from both sources
 synap status # verify all files show as up-to-date
 synap update # verify nothing to update
 ```
-**Expected:** Each command correctly handles both sources, labelled separately in output.
+**Expected:** Each command correctly handles both sources, labelled separately in output. The `-s` flag correctly filters to a single source, and the positional path correctly scopes results.
 
 ---
 

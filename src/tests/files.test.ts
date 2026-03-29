@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import {
   writeFile, readLocalFile, deleteFile,
   fileExists, isDirWritable, resolveLocalPath,
+  computeGitBlobSha,
 } from '../utils/files.js';
 
 // ─── Temp directory setup ─────────────────────────────────────────────────────
@@ -169,5 +170,35 @@ describe('resolveLocalPath', () => {
       cwd,
     });
     expect(result).toBe(join(cwd, 'src', 'prompts/system.md'));
+  });
+});
+
+// ─── computeGitBlobSha ───────────────────────────────────────────────────────
+
+describe('computeGitBlobSha', () => {
+  it('returns null for a non-existent file', () => {
+    expect(computeGitBlobSha(join(testDir, 'nope.md'))).toBeNull();
+  });
+
+  it('computes the correct git blob SHA-1 for a file', () => {
+    const filePath = join(testDir, 'test.md');
+    writeFile(filePath, '# Summarizer\nSummarizes text.');
+    expect(computeGitBlobSha(filePath)).toBe('fa1fbd6ba5e2685ee726fe5b5579c336afaf1f9c');
+  });
+
+  it('returns a different SHA after the file is modified', () => {
+    const filePath = join(testDir, 'test.md');
+    writeFile(filePath, 'original');
+    const sha1 = computeGitBlobSha(filePath);
+    writeFile(filePath, 'modified');
+    const sha2 = computeGitBlobSha(filePath);
+    expect(sha1).not.toBe(sha2);
+  });
+
+  it('computes the correct SHA for an empty file', () => {
+    const filePath = join(testDir, 'empty.md');
+    writeFile(filePath, '');
+    // git hash-object --stdin <<< "" gives the SHA for "blob 0\0"
+    expect(computeGitBlobSha(filePath)).toBe('e69de29bb2d1d6434b8b29ae775ad8c2e48c5391');
   });
 });
