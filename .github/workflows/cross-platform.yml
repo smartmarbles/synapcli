@@ -35,6 +35,9 @@ jobs:
       run:
         shell: ${{ matrix.shell }}
 
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       # ── Setup ────────────────────────────────────────────────
       - name: Checkout
@@ -95,7 +98,7 @@ jobs:
         run: |
           WORKDIR=$(mktemp -d)
           echo "$WORKDIR" > /tmp/synap-workdir
-          printf '%s\n' '{"repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".","postpull":"echo hook-ok"}' > "$WORKDIR/synap.config.json"
+          printf '%s\n' '{"repo":"smartmarbles/synapcli","branch":"main","remotePath":"src/commands","localOutput":".","postpull":"echo hook-ok"}' > "$WORKDIR/synap.config.json"
 
       - name: Create test directory and config (Windows)
         if: runner.os == 'Windows'
@@ -103,7 +106,7 @@ jobs:
         run: |
           $WORKDIR = Join-Path $env:TEMP "synap-smoke-$(Get-Random)"
           New-Item -ItemType Directory -Path $WORKDIR | Out-Null
-          $json = '{"repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".","postpull":"echo hook-ok"}'
+          $json = '{"repo":"smartmarbles/synapcli","branch":"main","remotePath":"src/commands","localOutput":".","postpull":"echo hook-ok"}'
           [System.IO.File]::WriteAllText((Join-Path $WORKDIR 'synap.config.json'), $json, (New-Object System.Text.UTF8Encoding $false))
           "SYNAP_WORKDIR=$WORKDIR" | Out-File -FilePath $env:GITHUB_ENV -Append
 
