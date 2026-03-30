@@ -1,0 +1,287 @@
+name: Cross-Platform Smoke Tests
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: # manual trigger
+
+# Only one run per ref at a time; cancel in-flight runs on new pushes
+concurrency:
+  group: cross-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: "${{ matrix.os }} / ${{ matrix.shell }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Required combos ──────────────────────────────────
+          - os: ubuntu-latest
+            shell: bash
+          - os: macos-latest
+            shell: bash  # zsh is default on macOS, but bash is available; zsh not supported as GHA shell
+          - os: windows-latest
+            shell: pwsh   # PowerShell 7+
+          - os: windows-latest
+            shell: powershell  # Windows PowerShell 5.1
+
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      # ── Setup ────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies & build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Link CLI globally
+        run: npm link
+
+      # ── Test 1: Version ──────────────────────────────────────
+      - name: "Test 1: synap --version"
+        run: |
+          synap --version
+
+      # ── Test 2: Doctor (no config) ──────────────────────────
+      - name: "Test 2: doctor without config"
+        if: runner.os != 'Windows'
+        run: |
+          WORKDIR=$(mktemp -d)
+          cd "$WORKDIR"
+          set +e
+          OUTPUT=$(synap doctor --ci 2>&1)
+          EXIT_CODE=$?
+          set -e
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "Run synap init"
+          if [ "$EXIT_CODE" -ne 1 ]; then
+            echo "FAIL: expected exit code 1, got $EXIT_CODE"
+            exit 1
+          fi
+
+      - name: "Test 2: doctor without config (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $WORKDIR = Join-Path $env:TEMP "synap-smoke-$(Get-Random)"
+          New-Item -ItemType Directory -Path $WORKDIR | Out-Null
+          Push-Location $WORKDIR
+          try {
+            $output = synap doctor --ci 2>&1 | Out-String
+            $exitCode = $LASTEXITCODE
+            Write-Host $output
+            if ($output -notmatch 'Run synap init') {
+              throw "FAIL: missing 'Run synap init' in output"
+            }
+            if ($exitCode -ne 1) {
+              throw "FAIL: expected exit code 1, got $exitCode"
+            }
+          } finally {
+            Pop-Location
+            Remove-Item -Recurse -Force $WORKDIR
+          }
+
+      # ── Seed config for remaining tests ─────────────────────
+      - name: Create test directory and config
+        if: runner.os != 'Windows'
+        run: |
+          WORKDIR=$(mktemp -d)
+          echo "$WORKDIR" > /tmp/synap-workdir
+          cd "$WORKDIR"
+          cat > synap.config.json << 'EOF'
+          {
+            "repo": "smartmarbles/synapcli",
+            "branch": "main",
+            "remotePath": "templates",
+            "localOutput": ".",
+            "postpull": "echo hook-ok"
+          }
+          EOF
+
+      - name: Create test directory and config (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $WORKDIR = Join-Path $env:TEMP "synap-smoke-$(Get-Random)"
+          New-Item -ItemType Directory -Path $WORKDIR | Out-Null
+          [System.IO.File]::WriteAllText(
+            (Join-Path $WORKDIR 'synap.config.json'),
+            (@{
+              repo        = 'smartmarbles/synapcli'
+              branch      = 'main'
+              remotePath  = 'templates'
+              localOutput = '.'
+              postpull    = 'echo hook-ok'
+            } | ConvertTo-Json),
+            [System.Text.Encoding]::UTF8
+          )
+          # Persist path for later steps
+          "SYNAP_WORKDIR=$WORKDIR" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Persist workdir (Unix)
+        if: runner.os != 'Windows'
+        run: echo "SYNAP_WORKDIR=$(cat /tmp/synap-workdir)" >> "$GITHUB_ENV"
+
+      # ── Test 3: List ────────────────────────────────────────
+      - name: "Test 3: synap list"
+        if: runner.os != 'Windows'
+        run: |
+          cd "$SYNAP_WORKDIR"
+          OUTPUT=$(synap list --ci 2>&1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "file(s)"
+
+      - name: "Test 3: synap list (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Push-Location $env:SYNAP_WORKDIR
+          try {
+            $output = synap list --ci 2>&1 | Out-String
+            Write-Host $output
+            if ($output -notmatch 'file\(s\)') {
+              throw "FAIL: expected 'file(s)' in list output"
+            }
+          } finally { Pop-Location }
+
+      # ── Test 4: Pull ────────────────────────────────────────
+      - name: "Test 4: synap pull --force"
+        if: runner.os != 'Windows'
+        run: |
+          cd "$SYNAP_WORKDIR"
+          OUTPUT=$(synap pull --ci --force 2>&1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "file(s) written"
+
+      - name: "Test 4: synap pull --force (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Push-Location $env:SYNAP_WORKDIR
+          try {
+            $output = synap pull --ci --force 2>&1 | Out-String
+            Write-Host $output
+            if ($output -notmatch 'file\(s\) written') {
+              throw "FAIL: expected 'file(s) written' in pull output"
+            }
+          } finally { Pop-Location }
+
+      # ── Test 5: Postpull hook ran ───────────────────────────
+      - name: "Test 5: postpull hook executed"
+        if: runner.os != 'Windows'
+        run: |
+          cd "$SYNAP_WORKDIR"
+          OUTPUT=$(synap pull --ci --force 2>&1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "hook-ok"
+
+      - name: "Test 5: postpull hook executed (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Push-Location $env:SYNAP_WORKDIR
+          try {
+            $output = synap pull --ci --force 2>&1 | Out-String
+            Write-Host $output
+            if ($output -notmatch 'hook-ok') {
+              throw "FAIL: expected 'hook-ok' in output"
+            }
+          } finally { Pop-Location }
+
+      # ── Test 6: Status ──────────────────────────────────────
+      - name: "Test 6: synap status"
+        if: runner.os != 'Windows'
+        run: |
+          cd "$SYNAP_WORKDIR"
+          OUTPUT=$(synap status --ci 2>&1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "Everything is up to date"
+
+      - name: "Test 6: synap status (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Push-Location $env:SYNAP_WORKDIR
+          try {
+            $output = synap status --ci 2>&1 | Out-String
+            Write-Host $output
+            if ($output -notmatch 'Everything is up to date') {
+              throw "FAIL: expected 'Everything is up to date'"
+            }
+          } finally { Pop-Location }
+
+      # ── Test 7: Error exit code ─────────────────────────────
+      - name: "Test 7: error exit code"
+        if: runner.os != 'Windows'
+        run: |
+          cd "$SYNAP_WORKDIR"
+          # Temporarily point config at a non-existent repo
+          cp synap.config.json synap.config.json.bak
+          cat > synap.config.json << 'EOF'
+          {
+            "repo": "smartmarbles/nonexistent-repo-xyz-12345",
+            "branch": "main",
+            "remotePath": "",
+            "localOutput": "."
+          }
+          EOF
+          set +e
+          synap list --ci 2>&1
+          EXIT_CODE=$?
+          set -e
+          mv synap.config.json.bak synap.config.json
+          if [ "$EXIT_CODE" -ne 4 ]; then
+            echo "FAIL: expected exit code 4 (NetworkError), got $EXIT_CODE"
+            exit 1
+          fi
+
+      - name: "Test 7: error exit code (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Push-Location $env:SYNAP_WORKDIR
+          try {
+            Copy-Item synap.config.json synap.config.json.bak
+            @{
+              repo        = 'smartmarbles/nonexistent-repo-xyz-12345'
+              branch      = 'main'
+              remotePath  = ''
+              localOutput = '.'
+            } | ConvertTo-Json | Set-Content synap.config.json -Encoding UTF8
+            synap list --ci 2>&1 | Out-String | Write-Host
+            $exitCode = $LASTEXITCODE
+            Move-Item -Force synap.config.json.bak synap.config.json
+            if ($exitCode -ne 4) {
+              throw "FAIL: expected exit code 4 (NetworkError), got $exitCode"
+            }
+          } finally { Pop-Location }
+
+      # ── Cleanup ─────────────────────────────────────────────
+      - name: Cleanup test directory
+        if: always() && runner.os != 'Windows'
+        run: rm -rf "$SYNAP_WORKDIR"
+
+      - name: Cleanup test directory (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (Test-Path $env:SYNAP_WORKDIR) {
+            Remove-Item -Recurse -Force $env:SYNAP_WORKDIR
+          }
