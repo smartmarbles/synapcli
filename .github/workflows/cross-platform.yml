@@ -95,16 +95,7 @@ jobs:
         run: |
           WORKDIR=$(mktemp -d)
           echo "$WORKDIR" > /tmp/synap-workdir
-          cd "$WORKDIR"
-          cat > synap.config.json << 'EOF'
-          {
-            "repo": "smartmarbles/synapcli",
-            "branch": "main",
-            "remotePath": "templates",
-            "localOutput": ".",
-            "postpull": "echo hook-ok"
-          }
-          EOF
+          printf '%s\n' '{"repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".","postpull":"echo hook-ok"}' > "$WORKDIR/synap.config.json"
 
       - name: Create test directory and config (Windows)
         if: runner.os == 'Windows'
@@ -112,18 +103,8 @@ jobs:
         run: |
           $WORKDIR = Join-Path $env:TEMP "synap-smoke-$(Get-Random)"
           New-Item -ItemType Directory -Path $WORKDIR | Out-Null
-          [System.IO.File]::WriteAllText(
-            (Join-Path $WORKDIR 'synap.config.json'),
-            (@{
-              repo        = 'smartmarbles/synapcli'
-              branch      = 'main'
-              remotePath  = 'templates'
-              localOutput = '.'
-              postpull    = 'echo hook-ok'
-            } | ConvertTo-Json),
-            [System.Text.Encoding]::UTF8
-          )
-          # Persist path for later steps
+          $json = '{"repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".","postpull":"echo hook-ok"}'
+          [System.IO.File]::WriteAllText((Join-Path $WORKDIR 'synap.config.json'), $json, (New-Object System.Text.UTF8Encoding $false))
           "SYNAP_WORKDIR=$WORKDIR" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Persist workdir (Unix)
@@ -223,16 +204,8 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           cd "$SYNAP_WORKDIR"
-          # Temporarily point config at a non-existent repo
           cp synap.config.json synap.config.json.bak
-          cat > synap.config.json << 'EOF'
-          {
-            "repo": "smartmarbles/nonexistent-repo-xyz-12345",
-            "branch": "main",
-            "remotePath": "",
-            "localOutput": "."
-          }
-          EOF
+          printf '%s\n' '{"repo":"smartmarbles/nonexistent-repo-xyz-12345","branch":"main","remotePath":"","localOutput":"."}' > synap.config.json
           set +e
           synap list --ci 2>&1
           EXIT_CODE=$?
@@ -250,12 +223,8 @@ jobs:
           Push-Location $env:SYNAP_WORKDIR
           try {
             Copy-Item synap.config.json synap.config.json.bak
-            @{
-              repo        = 'smartmarbles/nonexistent-repo-xyz-12345'
-              branch      = 'main'
-              remotePath  = ''
-              localOutput = '.'
-            } | ConvertTo-Json | Set-Content synap.config.json -Encoding UTF8
+            $json = '{"repo":"smartmarbles/nonexistent-repo-xyz-12345","branch":"main","remotePath":"","localOutput":"."}'  
+            [System.IO.File]::WriteAllText((Join-Path $env:SYNAP_WORKDIR 'synap.config.json'), $json, (New-Object System.Text.UTF8Encoding $false))
             synap list --ci 2>&1 | Out-String | Write-Host
             $exitCode = $LASTEXITCODE
             Move-Item -Force synap.config.json.bak synap.config.json
