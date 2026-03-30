@@ -228,9 +228,11 @@ jobs:
             Copy-Item synap.config.json synap.config.json.bak
             $json = '{"repo":"smartmarbles/nonexistent-repo-xyz-12345","branch":"main","remotePath":"","localOutput":"."}'  
             [System.IO.File]::WriteAllText((Join-Path $env:SYNAP_WORKDIR 'synap.config.json'), $json, (New-Object System.Text.UTF8Encoding $false))
-            $output = synap list --ci 2>&1
+            # Do NOT use 2>&1 here — in PS 5.1, merging stderr into the pipeline
+            # resets $LASTEXITCODE to 0. Let stdout/stderr flow to the console
+            # and capture the exit code immediately after the native process exits.
+            synap list --ci
             $exitCode = $LASTEXITCODE
-            Write-Host $output
             Move-Item -Force synap.config.json.bak synap.config.json
             if ($exitCode -ne 4) {
               throw "FAIL: expected exit code 4 (NetworkError), got $exitCode"
