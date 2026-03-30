@@ -227,10 +227,12 @@ jobs:
           Copy-Item synap.config.json synap.config.json.bak
           $json = '{"repo":"smartmarbles/nonexistent-repo-xyz-12345","branch":"main","remotePath":"","localOutput":"."}'
           [System.IO.File]::WriteAllText((Join-Path $env:SYNAP_WORKDIR 'synap.config.json'), $json, (New-Object System.Text.UTF8Encoding $false))
-          # Use Start-Process so a non-zero exit doesn't abort the PS script before
-          # we can read the code — $LASTEXITCODE is unreliable in GHA PS runners.
-          $synap = (Get-Command synap).Source
-          $proc = Start-Process -FilePath $synap -ArgumentList 'list','--ci' -Wait -PassThru -NoNewWindow
+          # Run via cmd.exe so Start-Process finds synap.cmd (not the .ps1 shim).
+          # Start-Process isolates the child exit code in $proc.ExitCode — reliably,
+          # without PS5.1/GHA $LASTEXITCODE quirks or script-abort on non-zero exit.
+          $proc = Start-Process -FilePath "cmd.exe" `
+            -ArgumentList "/c", "synap list --ci" `
+            -Wait -PassThru -NoNewWindow
           Move-Item -Force synap.config.json.bak synap.config.json
           if ($proc.ExitCode -ne 4) {
             throw "FAIL: expected exit code 4 (NetworkError), got $($proc.ExitCode)"
