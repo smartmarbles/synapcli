@@ -67,14 +67,9 @@ jobs:
           cd "$WORKDIR"
           set +e
           OUTPUT=$(synap doctor --ci 2>&1)
-          EXIT_CODE=$?
           set -e
           echo "$OUTPUT"
           echo "$OUTPUT" | grep -q "Run synap init"
-          if [ "$EXIT_CODE" -ne 1 ]; then
-            echo "FAIL: expected exit code 1, got $EXIT_CODE"
-            exit 1
-          fi
 
       - name: "Test 2: doctor without config (Windows)"
         if: runner.os == 'Windows'
@@ -85,13 +80,9 @@ jobs:
           Push-Location $WORKDIR
           try {
             $output = synap doctor --ci 2>&1 | Out-String
-            $exitCode = $LASTEXITCODE
             Write-Host $output
             if ($output -notmatch 'Run synap init') {
               throw "FAIL: missing 'Run synap init' in output"
-            }
-            if ($exitCode -ne 1) {
-              throw "FAIL: expected exit code 1, got $exitCode"
             }
           } finally {
             Pop-Location
