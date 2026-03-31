@@ -1,0 +1,22 @@
+# Ignore test, config, and dev files from npm package
+src/tests/
+coverage/
+.vscode/
+.github/
+*.test.ts
+*.spec.ts
+*.log
+*.md
+!README.md
+scripts/
+testplans/
+CROSSPLATFORM-TESTPLAN.md
+TESTPLAN.md
+synap.lock.json
+synap.config.json
+vitest.config.ts
+tsconfig.json
+.prettier*
+.editorconfig
+.env*
+# Do not ignore dist/ or src/ (needed for ESM/TypeScript CLI)

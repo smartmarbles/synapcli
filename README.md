@@ -455,7 +455,7 @@ This one token covers all repos listed in your `synap.config.json`, so no additi
 
 ### vs Git Submodules
 
-Git submodules are the closest built-in alternative — they embed one repo inside another and pin to a specific commit. On paper they sound similar but in practice they are notoriously painful. Cloning a repo with submodules requires `git clone --recurse-submodules` or a separate `git submodule update --init`, and new team members forget this constantly. Updating a submodule requires navigating into the submodule directory, pulling, then committing the parent repo to record the new SHA. They also bring the entire repository history rather than just the files you need, and CI pipelines require extra configuration to handle them.
+Git submodules are the closest built-in alternative — they embed one repo inside another and pin to a specific commit. On paper they sound similar but in practice they are cumbersome. Cloning a repo with submodules requires `git clone --recurse-submodules` or a separate `git submodule update --init`, and new team members forget this constantly. Updating a submodule requires navigating into the submodule directory, pulling, then committing the parent repo to record the new SHA. They also bring the entire repository history rather than just the files you need, and CI pipelines require extra configuration to handle them.
 
 SynapCLI is **file-focused rather than repo-focused**. You pull exactly the files you want, they land as normal files in your project with no git entanglement, and updating is a single command. The lockfile gives you the same reproducibility guarantee as a pinned submodule SHA, without the complexity.
 

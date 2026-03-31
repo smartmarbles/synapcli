@@ -7,7 +7,7 @@ Thank you for your interest in contributing! This document covers everything you
 ## Getting Started
 
 **Prerequisites:**
-- Node.js 18+
+- Node.js 20.12+
 - Git
 
 ```bash
@@ -77,7 +77,7 @@ synapcli/
     │   ├── completion.ts         # synap completion
     │   ├── register.ts           # synap register
     │   ├── deregister.ts         # synap deregister
-    │   └── uninstall.ts          # cleanup helper (used by preuninstall.mjs)
+    │   └── uninstall.ts          # synap uninstall (cleanup helper)
     ├── lib/
     │   ├── github.ts             # GitHub API client (retry, rate limits)
     │   ├── config.ts             # Config and lockfile read/write
@@ -97,18 +97,34 @@ synapcli/
         ├── files.test.ts
         ├── filter.test.ts
         ├── retry.test.ts
-        └── completionCache.test.ts
+        ├── completionCache.test.ts
+        ├── ...
+        └── commands/
+            ├── init.test.ts
+            ├── pull.test.ts
+            ├── list.test.ts
+            ├── status.test.ts
+            ├── diff.test.ts
+            ├── update.test.ts
+            ├── delete.test.ts
+            ├── doctor.test.ts
+            ├── completion.test.ts
+            ├── register.test.ts
+            ├── deregister.test.ts
+            ├── uninstall.test.ts
+            └── ...
 ```
 
 ---
 
 ## Adding a New Command
 
-1. Create `src/commands/yourcommand.ts` and export an async function following the pattern of existing commands
+1. Create `src/commands/yourcommand.ts` and export an async function following the pattern of existing commands (see `uninstall.ts` for a minimal example)
 2. Import and register it in `src/index.ts`
-3. Add any new option interfaces to `src/types.ts`
-4. Add tests in `src/tests/`
-5. Document it in `README.md` under the Commands section
+3. Add any new option interfaces to `src/types.ts` if needed
+4. Add a test file in `src/tests/commands/yourcommand.test.ts` (tests for commands are mirrored under `src/tests/commands/`)
+5. Add the command name to the completions list in `src/lib/completionCache.ts` so tab completion works for your new command
+6. Document it in `README.md` under the Commands section
 
 ---
 
