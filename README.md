@@ -1,7 +1,7 @@
 <h1 align="center">
 	<br>
 	<br>
-	<img width="320" src="assets/synapcli_logo1.png" alt="Synap CLI">
+	<img width="400" src="assets/synapcli_logo1.png" alt="Synap CLI">
 	<br>
 	<br>
 </h1>
