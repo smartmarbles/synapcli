@@ -1,4 +1,4 @@
-![](assets/synapcli_logo1.png)
+![Logo](/assets/synapcli_logo1.png?raw=true)
 
 # SynapCLI
 
