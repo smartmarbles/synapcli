@@ -1,3 +1,5 @@
+![](assets/synapcli_logo1.png)
+
 # SynapCLI
 
 [![npm version](https://img.shields.io/npm/v/synapcli.svg)](https://www.npmjs.com/package/synapcli)
