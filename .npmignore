@@ -8,6 +8,7 @@ coverage/
 *.log
 *.md
 !README.md
+!assets/synapcli_logo1.png
 scripts/
 testplans/
 CROSSPLATFORM-TESTPLAN.md
