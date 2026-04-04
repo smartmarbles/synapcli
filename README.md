@@ -7,8 +7,8 @@
 
 # SynapCLI
 
-[![npm version](https://img.shields.io/npm/v/synapcli.svg)](https://www.npmjs.com/package/synapcli)
-[![npm downloads](https://img.shields.io/npm/dm/synapcli.svg)](https://www.npmjs.com/package/synapcli)
+[![npm version](https://img.shields.io/npm/v/synapcli.svg)](https://www.npmjs.com/package/@smartmarbles/synapcli)
+[![npm downloads](https://img.shields.io/npm/dm/synapcli.svg)](https://www.npmjs.com/package/@smartmarbles/synapcli)
 [![CI](https://github.com/smartmarbles/synapcli/actions/workflows/ci.yml/badge.svg)](https://github.com/smartmarbles/synapcli/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/synapcli.svg)](https://nodejs.org)
