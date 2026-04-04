@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/@smartmarbles/synapcli.svg)](https://nodejs.org)
 
-A professional CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, copilot instructions, coding standards, scripts, resources, and any other AI model assets across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 20.12+ on the target machine. Supports multiple sources, glob filtering, lockfile-based diffing, tab completion, CI/CD pipelines, and more.
+A professional CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 20.12+ on the target machine. Supports multiple sources, lockfile-based diffing, tab completion, and more.
 
 ---
 
