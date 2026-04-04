@@ -8,7 +8,7 @@ import {
   constants,
 } from 'fs';
 import { createHash } from 'crypto';
-import { dirname, join } from 'path';
+import { dirname, join, isAbsolute } from 'path';
 import type { ResolveLocalPathParams } from '../types.js';
 
 export function writeFile(filePath: string, content: string): void {
@@ -74,7 +74,8 @@ export function resolveLocalPath({
     relative = remotePath.slice(remoteBase.length).replace(/^\//, '');
   }
 
-  return join(cwd, localOutput, relative);
+  const base = isAbsolute(localOutput) ? localOutput : join(cwd, localOutput);
+  return join(base, relative);
 }
 
 /**

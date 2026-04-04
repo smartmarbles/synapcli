@@ -171,6 +171,17 @@ describe('resolveLocalPath', () => {
     });
     expect(result).toBe(join(cwd, 'src', 'prompts/system.md'));
   });
+
+  it('uses absolute localOutput directly without joining cwd', () => {
+    const absOutput = join(tmpdir(), 'absolute-target');
+    const result = resolveLocalPath({
+      remotePath: 'agents/summarizer.md',
+      remoteBase: 'agents',
+      localOutput: absOutput,
+      cwd,
+    });
+    expect(result).toBe(join(absOutput, 'summarizer.md'));
+  });
 });
 
 // ─── computeGitBlobSha ───────────────────────────────────────────────────────

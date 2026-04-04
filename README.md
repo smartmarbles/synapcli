@@ -280,6 +280,13 @@ synap deregister
       "branch": "main",
       "remotePath": "prompts",
       "localOutput": "src/prompts"
+    },
+    {
+      "name": "Shared agents (another project)",
+      "repo": "acme-org/ai-agents",
+      "branch": "main",
+      "remotePath": "agents",
+      "localOutput": "/home/you/other-project/.github/agents"
     }
   ],
   "postpull": "prettier --write ."
@@ -293,7 +300,7 @@ synap deregister
 | `repo` | GitHub repository as `owner/repo` |
 | `branch` | Branch, tag, or commit SHA (default: `main`) |
 | `remotePath` | Folder inside the repo to pull from (blank = repo root) |
-| `localOutput` | Local directory to write files into (default: `.`) |
+| `localOutput` | Local directory to write files into (default: `.`). Accepts relative paths (resolved from the project root) or absolute paths (e.g. `C:\Users\you\other-project` or `/home/you/other-project`) |
 | `include` | Glob patterns — only matching files are pulled |
 | `exclude` | Glob patterns — matching files are skipped |
 | `postpull` | Shell command run automatically after any pull or update |
