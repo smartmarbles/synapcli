@@ -17,14 +17,17 @@ SynapCLI (`synap`) is a Node.js CLI tool that syncs files from GitHub repositori
 src/
   index.ts           # CLI entry point — wires commands via Commander
   types.ts           # All shared TypeScript interfaces and types
-  commands/          # One file per CLI command (init, pull, list, diff, update, delete, status, doctor, completion, register, deregister)
+  commands/          # One file per CLI command (init, pull, list, diff, update, delete, status, doctor, completion, register, deregister, uninstall)
   lib/               # Core logic (config, github, filter, hooks, preview, retry, sourcePrompt, completionCache)
   utils/             # Cross-cutting utilities (logger, context, files, progress)
   tests/             # Mirror of src/ — one test file per source file
-    commands/
+                     # Root-level test files cover lib/ and utils/ modules
+    commands/        # One test file per command
 ```
 
 Config files: `synap.config.json` (user config), `synap.lock.json` (SHA tracking).
+
+Other top-level directories: `scripts/` (npm lifecycle scripts), `templates/` (workflow templates), `testplans/` (manual test plans).
 
 ## Code Conventions
 
@@ -52,25 +55,10 @@ Config files: `synap.config.json` (user config), `synap.lock.json` (SHA tracking
 ### Glob Matching
 - Use `picomatch.isMatch()` via `src/lib/filter.ts` — the project uses `picomatch` directly, not `micromatch`
 
-## Adding a New Command
-
-1. Create `src/commands/<name>.ts` exporting an async action function
-2. Register it in `src/index.ts` using `program.command(...).action(...)`
-3. Add types to `src/types.ts` if needed
-4. Add the command name to the completions list in `src/lib/completionCache.ts`
-5. Create `src/tests/commands/<name>.test.ts` with 100% coverage
-
 ## Keeping Docs in Sync
 
 Update `README.md` when any of the following change: Node.js version requirement, installation steps, CLI commands or their flags/options, config file format (`synap.config.json`), or the overall purpose/workflow of the tool.
 
 Update `TESTPLAN.md` when adding new commands, changing coverage requirements, or altering the test strategy for existing functionality.
 
-## Dependency Conventions
-
-- All dependency versions are pinned exactly (no `^` or `~`)
-- `@types/*` packages: major.minor should match the corresponding package where a matching version exists on npm
-- **Minimise the dependency footprint** — before adding a new package:
-  - If the functionality is already provided by a transitive dependency (e.g. a sub-package of something already installed), use that directly rather than adding a new top-level dependency
-  - If only a single small function is needed, implement it inline rather than pulling in a package
-  - New packages must justify their weight: broad functionality used in multiple places
+Update `testplans/CROSSPLATFORM-TESTPLAN.md` when adding new OS/shell combinations to the test matrix, when new commands require smoke-test coverage, or when prerequisites change.
