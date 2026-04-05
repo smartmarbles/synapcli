@@ -203,12 +203,23 @@ describe('fetchFileContent', () => {
     await expect(fetchFileContent({ owner: 'a', repo: 'b', path: 'a.md' })).rejects.toThrow(/encoding/);
   });
 
-  it('throws when content field is missing', async () => {
+  it('returns empty string for an empty file (content: "")', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true, status: 200, headers: makeHeaders(),
+      json: () => Promise.resolve({ type: 'file', path: '__init__.py', sha: 'sha', size: 0, encoding: 'base64', content: '' }),
+    }));
+    const result = await fetchFileContent({ owner: 'a', repo: 'b', path: '__init__.py' });
+    expect(result.content).toBe('');
+    expect(result.sha).toBe('sha');
+  });
+
+  it('returns empty string when content field is absent', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true, status: 200, headers: makeHeaders(),
       json: () => Promise.resolve({ type: 'file', path: 'a.md', sha: 'sha', size: 0, encoding: 'base64' }),
     }));
-    await expect(fetchFileContent({ owner: 'a', repo: 'b', path: 'a.md' })).rejects.toThrow(/encoding/);
+    const result = await fetchFileContent({ owner: 'a', repo: 'b', path: 'a.md' });
+    expect(result.content).toBe('');
   });
 });
 

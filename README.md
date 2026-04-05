@@ -117,6 +117,8 @@ synap delete summarizer
 synap completion --install
 ```
 
+> **Looking for a real-world multi-source example?** See [EXAMPLES.md](https://github.com/smartmarbles/synapcli/blob/main/EXAMPLES.md) — pulling Claude skills, Copilot instructions, and custom agents from community GitHub repos all at once.
+
 ---
 
 ## Commands
@@ -127,7 +129,7 @@ Interactively create a `synap.config.json`. Supports registering multiple reposi
 ---
 
 ### `synap doctor`
-Health check for your entire setup — Node version, git, token validity, repo access, and output directory permissions.
+Health check for your entire setup — Node version, git, token validity, repo access, output directory permissions, and orphaned lock entries (tracked files that no longer exist locally).
 
 ```bash
 synap doctor

@@ -138,12 +138,12 @@ export async function fetchFileContent({
 
   const data = (await res.json()) as GitHubFileResponse;
 
-  if (data.encoding !== 'base64' || !data.content) {
+  if (data.encoding !== 'base64') {
     throw new Error(`Unexpected encoding: ${data.encoding}`);
   }
 
   return {
-    content: Buffer.from(data.content, 'base64').toString('utf8'),
+    content: data.content ? Buffer.from(data.content, 'base64').toString('utf8') : '',
     sha: data.sha,
     size: data.size,
   };

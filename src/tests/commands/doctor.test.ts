@@ -3,6 +3,11 @@ import { mkdirSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+vi.mock('@clack/prompts', () => ({
+  confirm:  vi.fn().mockResolvedValue(true),
+  isCancel: vi.fn(() => false),
+}));
+
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
 }));
@@ -33,9 +38,11 @@ vi.mock('../../utils/files.js', async (importOriginal) => {
 
 import { execSync }      from 'child_process';
 import { homedir }       from 'os';
+import * as p            from '@clack/prompts';
 import { doctorCommand } from '../../commands/doctor.js';
-import { saveConfig }    from '../../lib/config.js';
+import { saveConfig, loadLock }    from '../../lib/config.js';
 import * as filesUtils   from '../../utils/files.js';
+import { setCI }         from '../../utils/context.js';
 import type { SynapConfig } from '../../types.js';
 
 const OWNER  = 'acme';
@@ -80,6 +87,7 @@ beforeEach(() => {
   });
   consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
+  setCI(false);
 });
 
 afterEach(() => {
@@ -205,6 +213,8 @@ describe('doctorCommand', () => {
   });
 
   it('shows lockfile entry count when lockfile is present and valid', async () => {
+    // Write the tracked file to disk so it is not flagged as orphaned
+    writeFileSync(join(testDir, 'a.md'), 'content');
     writeFileSync(join(testDir, 'synap.lock.json'), JSON.stringify({
       'acme/agents::a.md': { sha: 'sha1', ref: 'main', pulledAt: new Date().toISOString() },
     }));
@@ -345,5 +355,127 @@ describe('doctorCommand', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeOkResponse([])));
 
     await expect(doctorCommand()).rejects.toThrow('exit:1');
+  });
+
+  it('shows orphaned entries caution when lock has entries for missing local files', async () => {
+    // Lock has a.md but the file does not exist on disk
+    writeFileSync(join(testDir, 'synap.lock.json'), JSON.stringify({
+      'acme/agents::a.md': { sha: 'sha1', ref: 'main', pulledAt: new Date().toISOString() },
+    }));
+    saveConfig(BASE_CONFIG, testDir);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeOkResponse({ login: 'alice' }))
+      .mockResolvedValueOnce(makeOkResponse([]))
+    );
+    process.env.GITHUB_TOKEN = 'valid-token';
+    vi.mocked(p.confirm).mockResolvedValueOnce(false);
+
+    await doctorCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Orphaned lock entries');
+  });
+
+  it('removes orphaned lock entries when user confirms cleanup', async () => {
+    writeFileSync(join(testDir, 'synap.lock.json'), JSON.stringify({
+      'acme/agents::missing.md': { sha: 'sha1', ref: 'main', pulledAt: new Date().toISOString() },
+    }));
+    saveConfig(BASE_CONFIG, testDir);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeOkResponse({ login: 'alice' }))
+      .mockResolvedValueOnce(makeOkResponse([]))
+    );
+    process.env.GITHUB_TOKEN = 'valid-token';
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+    vi.mocked(p.isCancel).mockReturnValueOnce(false);
+
+    await doctorCommand();
+
+    const lock = loadLock(testDir);
+    expect(lock['acme/agents::missing.md']).toBeUndefined();
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Removed');
+  });
+
+  it('keeps orphaned lock entries when user declines cleanup', async () => {
+    writeFileSync(join(testDir, 'synap.lock.json'), JSON.stringify({
+      'acme/agents::missing.md': { sha: 'sha1', ref: 'main', pulledAt: new Date().toISOString() },
+    }));
+    saveConfig(BASE_CONFIG, testDir);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeOkResponse({ login: 'alice' }))
+      .mockResolvedValueOnce(makeOkResponse([]))
+    );
+    process.env.GITHUB_TOKEN = 'valid-token';
+    vi.mocked(p.confirm).mockResolvedValueOnce(false);
+    vi.mocked(p.isCancel).mockReturnValueOnce(false);
+
+    await doctorCommand();
+
+    const lock = loadLock(testDir);
+    expect(lock['acme/agents::missing.md']).toBeDefined();
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Skipped');
+  });
+
+  it('keeps orphaned lock entries when user cancels the prompt', async () => {
+    writeFileSync(join(testDir, 'synap.lock.json'), JSON.stringify({
+      'acme/agents::missing.md': { sha: 'sha1', ref: 'main', pulledAt: new Date().toISOString() },
+    }));
+    saveConfig(BASE_CONFIG, testDir);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeOkResponse({ login: 'alice' }))
+      .mockResolvedValueOnce(makeOkResponse([]))
+    );
+    process.env.GITHUB_TOKEN = 'valid-token';
+    vi.mocked(p.isCancel).mockReturnValueOnce(true);
+    vi.mocked(p.confirm).mockResolvedValueOnce(Symbol('cancel') as unknown as boolean);
+
+    await doctorCommand();
+
+    const lock = loadLock(testDir);
+    expect(lock['acme/agents::missing.md']).toBeDefined();
+  });
+
+  it('shows orphan caution but skips prompt in CI mode', async () => {
+    writeFileSync(join(testDir, 'synap.lock.json'), JSON.stringify({
+      'acme/agents::missing.md': { sha: 'sha1', ref: 'main', pulledAt: new Date().toISOString() },
+    }));
+    saveConfig(BASE_CONFIG, testDir);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeOkResponse({ login: 'alice' }))
+      .mockResolvedValueOnce(makeOkResponse([]))
+    );
+    process.env.GITHUB_TOKEN = 'valid-token';
+    setCI(true);
+
+    await doctorCommand();
+
+    expect(p.confirm).not.toHaveBeenCalled();
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Orphaned lock entries');
+  });
+
+  it('uses plural messaging and removes multiple orphaned entries when user confirms', async () => {
+    writeFileSync(join(testDir, 'synap.lock.json'), JSON.stringify({
+      'acme/agents::missing-a.md': { sha: 'sha1', ref: 'main', pulledAt: new Date().toISOString() },
+      'acme/agents::missing-b.md': { sha: 'sha2', ref: 'main', pulledAt: new Date().toISOString() },
+    }));
+    saveConfig(BASE_CONFIG, testDir);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(makeOkResponse({ login: 'alice' }))
+      .mockResolvedValueOnce(makeOkResponse([]))
+    );
+    process.env.GITHUB_TOKEN = 'valid-token';
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+    vi.mocked(p.isCancel).mockReturnValueOnce(false);
+
+    await doctorCommand();
+
+    const lock = loadLock(testDir);
+    expect(lock['acme/agents::missing-a.md']).toBeUndefined();
+    expect(lock['acme/agents::missing-b.md']).toBeUndefined();
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Removed 2');
   });
 });

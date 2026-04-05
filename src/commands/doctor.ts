@@ -1,13 +1,15 @@
 import ora from 'ora';
 import chalk from 'chalk';
+import * as p from '@clack/prompts';
 import { execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { loadConfig, parseRepoString, resolvedSources, CONFIG_FILE } from '../lib/config.js';
+import { loadConfig, parseRepoString, resolvedSources, loadLock, saveLock, lockKey, CONFIG_FILE } from '../lib/config.js';
 import { validateToken, hasToken, listRepoContents } from '../lib/github.js';
-import { isDirWritable } from '../utils/files.js';
+import { isDirWritable, fileExists, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
+import { isCI } from '../utils/context.js';
 import { ExitCode } from '../types.js';
 
 interface CheckResult {
@@ -91,10 +93,11 @@ export async function doctorCommand(): Promise<void> {
 
   // ── Lockfile ───────────────────────────────────────────────────────────────
   const lockPath = join(process.cwd(), 'synap.lock.json');
+  let parsedLock: Record<string, unknown> | null = null;
   if (existsSync(lockPath)) {
     try {
-      const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
-      const trackedCount = Object.keys(lock).filter((k) => !k.endsWith('::__failed__')).length;
+      parsedLock = JSON.parse(readFileSync(lockPath, 'utf8'));
+      const trackedCount = Object.keys(parsedLock!).filter((k) => !k.endsWith('::__failed__')).length;
       results.push(check(`synap.lock.json valid (${trackedCount} tracked file(s))`, true));
     } catch {
       results.push(check('synap.lock.json valid', false, 'File contains invalid JSON — run synap pull to rebuild it'));
@@ -159,7 +162,55 @@ export async function doctorCommand(): Promise<void> {
     ));
   }
 
+  // ── Orphaned lock entries ──────────────────────────────────────────────────
+  const orphanedKeys: string[] = [];
+  if (parsedLock !== null) {
+    for (const source of sources) {
+      const { owner, repo } = parseRepoString(source.repo);
+      const repoKey = `${owner}/${repo}`;
+      const prefix = `${repoKey}::`;
+      const trackedKeys = Object.keys(parsedLock).filter(
+        (k) => k.startsWith(prefix) && !k.endsWith('::__failed__')
+      );
+      for (const key of trackedKeys) {
+        const filePath = key.slice(prefix.length);
+        const localPath = resolveLocalPath({
+          remotePath: filePath,
+          remoteBase: source.remotePath || '',
+          localOutput: source.localOutput,
+        });
+        if (!fileExists(localPath)) {
+          orphanedKeys.push(key);
+        }
+      }
+    }
+    if (orphanedKeys.length > 0) {
+      results.push(caution(
+        `Orphaned lock entries (${orphanedKeys.length})`,
+        `${orphanedKeys.length} tracked file(s) no longer exist locally — run ${chalk.white('synap delete')} or clean up below`
+      ));
+    }
+  }
+
   printResults(results);
+
+  // ── Offer to clean orphaned entries ───────────────────────────────────────
+  if (orphanedKeys.length > 0 && !isCI()) {
+    console.log();
+    const confirmed = await p.confirm({
+      message: `Remove ${orphanedKeys.length} orphaned lock entr${orphanedKeys.length === 1 ? 'y' : 'ies'}?`,
+    });
+    if (!p.isCancel(confirmed) && confirmed) {
+      const lock = loadLock();
+      for (const key of orphanedKeys) {
+        delete lock[key];
+      }
+      saveLock(lock);
+      log.success(`Removed ${orphanedKeys.length} orphaned lock entr${orphanedKeys.length === 1 ? 'y' : 'ies'}.`);
+    } else {
+      log.info('Skipped. Lock entries were not changed.');
+    }
+  }
 
   const failed = results.filter((r) => !r.ok && !r.warn);
   if (failed.length === 0) {

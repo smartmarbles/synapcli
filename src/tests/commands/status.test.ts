@@ -197,4 +197,35 @@ describe('statusCommand', () => {
     const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(output.toLowerCase()).toContain('up to date');
   });
+
+  it('shows removed-upstream for lock entries no longer present in the remote listing', async () => {
+    saveLock({
+      [`${REPO_KEY}::deleted-upstream.md`]: { sha: 'sha-old', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+    writeFileSync(join(testDir, 'deleted-upstream.md'), '# still here locally');
+
+    // Remote listing is empty — file was deleted upstream
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([])));
+
+    await statusCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output.toLowerCase()).toContain('removed upstream');
+    expect(output).toContain('deleted-upstream.md');
+    expect(output).toContain('synap delete');
+  });
+
+  it('includes removed-upstream count in the "need attention" summary', async () => {
+    saveLock({
+      [`${REPO_KEY}::gone.md`]: { sha: 'sha-old', ref: BRANCH, pulledAt: new Date().toISOString() },
+    }, testDir);
+    writeFileSync(join(testDir, 'gone.md'), '# still here locally');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([])));
+
+    await statusCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output.toLowerCase()).toContain('need attention');
+  });
 });

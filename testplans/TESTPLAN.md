@@ -426,6 +426,18 @@ synap pull --force
 
 ---
 
+### 7.3 — Status with a file removed from the upstream repo
+Simulate a file being deleted from the remote by removing its entry from the remote listing (or use a test repo where a file has been deleted). The file still exists locally and has a lock entry.
+```bash
+synap status
+```
+**Expected:**
+- File appears under "Removed upstream" group in magenta
+- Hint shown: "Run synap delete \<name\> to stop tracking these files."
+- File is included in the "N file(s) need attention" summary count
+
+---
+
 ## Section 8 — Diff
 
 ### 8.1 — Diff with no changes
@@ -738,6 +750,22 @@ synap doctor
 - ✔ Repo accessible for each source
 - ✔ Output dir writable for each source
 - "All checks passed. SynapCLI is ready to use."
+
+---
+
+### 16.4 — Doctor with orphaned lock entries
+```bash
+# Delete a tracked file manually without running synap delete
+rm .github/agents/summarizer.md
+synap doctor
+```
+**Expected:**
+- ⚠ Orphaned lock entries (1) — with a hint to run `synap delete` or clean up below
+- Prompt: "Remove 1 orphaned lock entry?"
+- **If yes:** lock entry removed, "Removed 1 orphaned lock entry." logged
+- **If no / Ctrl+C:** "Skipped. Lock entries were not changed."
+
+In CI mode (`synap doctor --ci`): caution is shown in output but no prompt is presented.
 
 ---
 

@@ -69,6 +69,24 @@ export async function statusCommand(): Promise<void> {
 
       allEntries.push({ remotePath: file.path, localPath, status, source });
     }
+
+    // ── Removed upstream: lock entries no longer in the remote listing ────
+    const remotePaths = new Set(files.map((f) => f.path));
+    const prefix = `${repoKey}::`;
+    const trackedKeys = Object.keys(lock).filter(
+      (k) => k.startsWith(prefix) && !k.endsWith('::__failed__')
+    );
+    for (const key of trackedKeys) {
+      const filePath = key.slice(prefix.length);
+      if (!remotePaths.has(filePath)) {
+        const localPath = resolveLocalPath({
+          remotePath: filePath,
+          remoteBase: remotePath,
+          localOutput: source.localOutput,
+        });
+        allEntries.push({ remotePath: filePath, localPath, status: 'removed-upstream', source });
+      }
+    }
   }
 
   if (allEntries.length === 0) {
@@ -78,10 +96,11 @@ export async function statusCommand(): Promise<void> {
 
   // Group by status
   const groups: Record<FileStatus, StatusEntry[]> = {
-    'changed':        allEntries.filter((e) => e.status === 'changed'),
-    'missing-locally': allEntries.filter((e) => e.status === 'missing-locally'),
-    'not-pulled':     allEntries.filter((e) => e.status === 'not-pulled'),
-    'up-to-date':     allEntries.filter((e) => e.status === 'up-to-date'),
+    'changed':          allEntries.filter((e) => e.status === 'changed'),
+    'missing-locally':  allEntries.filter((e) => e.status === 'missing-locally'),
+    'removed-upstream': allEntries.filter((e) => e.status === 'removed-upstream'),
+    'not-pulled':       allEntries.filter((e) => e.status === 'not-pulled'),
+    'up-to-date':       allEntries.filter((e) => e.status === 'up-to-date'),
   };
 
   console.log();
@@ -102,6 +121,15 @@ export async function statusCommand(): Promise<void> {
     console.log();
   }
 
+  if (groups['removed-upstream'].length > 0) {
+    console.log(chalk.bold.magenta(`  Removed upstream (${groups['removed-upstream'].length}):`));
+    for (const e of groups['removed-upstream']) {
+      console.log(`    ${chalk.magenta('-')} ${chalk.white(e.remotePath)}`);
+    }
+    console.log(`    ${chalk.dim('Run synap delete <name> to stop tracking these files.')}`);
+    console.log();
+  }
+
   if (groups['not-pulled'].length > 0) {
     console.log(chalk.bold.cyan(`  Not yet pulled (${groups['not-pulled'].length}):`));
     for (const e of groups['not-pulled']) {
@@ -119,7 +147,7 @@ export async function statusCommand(): Promise<void> {
   }
 
   // Summary line
-  const changed  = groups.changed.length + groups['missing-locally'].length;
+  const changed  = groups.changed.length + groups['missing-locally'].length + groups['removed-upstream'].length;
   const pending  = groups['not-pulled'].length;
 
   if (changed > 0) {

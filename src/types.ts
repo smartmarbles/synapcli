@@ -111,7 +111,7 @@ export interface PreviewFile {
 
 // ─── Status ───────────────────────────────────────────────────────────────────
 
-export type FileStatus = 'up-to-date' | 'changed' | 'not-pulled' | 'missing-locally';
+export type FileStatus = 'up-to-date' | 'changed' | 'not-pulled' | 'missing-locally' | 'removed-upstream';
 
 export interface StatusEntry {
   remotePath: string;
