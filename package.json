@@ -1,6 +1,6 @@
 {
   "name": "@smartmarbles/synapcli",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Sync files from a GitHub repository into any project — built for AI-assisted development teams sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects.",
   "type": "module",
   "bin": {
