@@ -337,7 +337,7 @@ See [TESTPLAN.md](TESTPLAN.md) for exhaustive coverage of every command and flag
 
 ## Automated CI Coverage
 
-Tests 1–9 (everything except completion install and uninstall cleanup) run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every push to main, on every release, and on manual dispatch. The workflow covers:
+Tests 1–2 and 4–9 run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every push to main, on every release, and on manual dispatch. Test 3 (Init) is skipped in CI because it requires interactive TTY prompts — the workflow seeds config programmatically instead. The workflow covers:
 
 | OS | Shell |
 |---|---|
@@ -346,4 +346,4 @@ Tests 1–9 (everything except completion install and uninstall cleanup) run aut
 | Windows (latest) | PowerShell 7+ (pwsh) |
 | Windows (latest) | Windows PowerShell 5.1 |
 
-Tests 10 (completion install) and 11 (uninstall cleanup) require interactive shell sessions and real profile files, so they remain manual-only.
+Tests 3 (Init), 10 (completion install), and 11 (uninstall cleanup) require interactive shell sessions and real profile files, so they remain manual-only.
