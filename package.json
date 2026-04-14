@@ -1,6 +1,6 @@
 {
   "name": "@smartmarbles/synapcli",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Sync files from a GitHub repository into any project — built for AI-assisted development teams sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects.",
   "type": "module",
   "bin": {
@@ -40,11 +40,11 @@
   },
   "devDependencies": {
     "@types/cli-progress": "3.11.6",
-    "@types/node": "25.5.2",
+    "@types/node": "25.6.0",
     "@types/picomatch": "4.0.3",
-    "@vitest/coverage-v8": "4.1.2",
+    "@vitest/coverage-v8": "4.1.4",
     "typescript": "6.0.2",
-    "vitest": "4.1.2"
+    "vitest": "4.1.4"
   },
   "engines": {
     "node": ">=20.12.0"
