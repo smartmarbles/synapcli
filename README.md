@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/@smartmarbles/synapcli.svg)](https://nodejs.org)
 
-A professional CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 20.12+ on the target machine. Supports multiple sources, lockfile-based diffing, tab completion, and more.
+A CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 20.12+ on the target machine. Supports multiple sources, lockfile-based diffing, tab completion, and more.
 
 ---
 
@@ -182,6 +182,8 @@ synap pull --ref a1b2c3d        # pull from a specific commit SHA
 synap pull --retry-failed       # retry only files that failed in the last run
 ```
 
+When multiple sources are registered, `pull` processes each one in sequence. The preview shows the source name as a label (e.g. `[Agents]`) and a progression counter (e.g. `(1/3)`) so you always know which source you're looking at. In interactive mode, deselecting all files or cancelling one source skips it and moves to the next — it no longer exits the entire process.
+
 ---
 
 ### `synap diff [name]`
@@ -233,8 +235,21 @@ synap completion bash           # print the bash script to stdout
 Add one or more repositories to an existing `synap.config.json`. Automatically migrates a single-source config to the multi-source format if needed. Detects and skips duplicates — a duplicate is defined as the same `repo` **and** `remotePath` combination, so you can register the same repository multiple times with different `remotePath` values to pull from different subdirectories.
 
 ```bash
-synap register
+synap register                      # interactive — walk through prompts
+synap register --from ./team.collection.json   # import from a local collection file
+synap register --from org/repo/path/to/file.collection.json  # import from GitHub (shorthand)
+synap register --from https://raw.githubusercontent.com/org/repo/main/agents.collection.json
+synap register --from ./team.collection.json --yes  # skip localOutput confirmation prompts
+synap register --from org/repo/shared.json --ref v2  # fetch from a specific branch/tag
 ```
+
+The `--from` flag imports sources from a **collection file** — a JSON file containing a `sources[]` array (same schema as `synap.config.json`). This makes it easy to share a curated set of sources across teams or projects. See [Collection files](#collection-files) below for the format.
+
+During import, SynapCLI:
+- Skips sources already registered (same repo + remotePath + branch)
+- Detects name conflicts and offers to rename or skip
+- Backs up your existing config to `synap.config.json.bak` before merging
+- Tags each imported source with `_importedFrom` for traceability
 
 ---
 
@@ -307,6 +322,40 @@ synap deregister
 | `exclude` | Glob patterns — matching files are skipped |
 | `postpull` | Shell command run automatically after any pull or update |
 | `sources` | Array of the above for multi-source projects |
+| `_importedFrom` | (Auto-set by `register --from`) Origin URL or file path of the collection the source was imported from |
+
+### Collection files
+
+A collection file is a JSON file with a `sources[]` array — the same schema as `synap.config.json` minus project-level fields like `postpull`. Use collection files to share curated sets of sources with your team or the community.
+
+```json
+{
+  "sources": [
+    {
+      "name": "Claude Skills",
+      "repo": "acme-org/ai-agents",
+      "branch": "main",
+      "remotePath": "skills",
+      "localOutput": ".github/skills"
+    },
+    {
+      "name": "Copilot Instructions",
+      "repo": "acme-org/ai-agents",
+      "branch": "main",
+      "remotePath": "instructions",
+      "localOutput": ".github"
+    }
+  ]
+}
+```
+
+Import with `synap register --from <path-or-url>`. The `--from` flag accepts three formats:
+
+| Format | Example |
+|---|---|
+| Local file path | `./team.collection.json` |
+| GitHub shorthand | `org/repo/path/to/file.collection.json` |
+| Raw GitHub URL | `https://raw.githubusercontent.com/org/repo/main/file.json` |
 
 ---
 
@@ -468,6 +517,14 @@ This one token covers all repos listed in your `synap.config.json`, so no additi
 ---
 
 ## How SynapCLI Compares
+
+### vs GitHub Copilot CLI Plugins
+
+[Copilot CLI plugins](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-plugins) are installable packages that bundle agents, skills, hooks, and MCP/LSP server configs into a single unit. They're distributed through marketplaces (which are themselves GitHub repos) and installed with a built-in command. If your team standardises on Copilot CLI, plugins are the native way to share capabilities.
+
+Under the hood, though, plugins are just files and folders in a GitHub repository — `*.agent.md` files, `SKILL.md` files, `hooks.json`, `.mcp.json`, and so on. That means SynapCLI can pull them too. If you want to cherry-pick specific agents or skills from a plugin repo without installing the full package, or mix assets from plugin repos with files from non-plugin repos (coding standards, prompt libraries, CI templates), SynapCLI gives you that flexibility. You can also use `synap status` and `synap diff` to track exactly which versions of those files you're running — something the plugin system doesn't expose.
+
+The two tools are complementary: use plugins when you want the full curated package with marketplace discovery, and use SynapCLI when you want fine-grained file-level control, cross-repo aggregation, or lockfile-based change tracking.
 
 ### vs Git Submodules
 

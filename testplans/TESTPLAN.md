@@ -338,6 +338,19 @@ synap pull --interactive
 
 ---
 
+### 6.7b — Pull interactive with multiple sources
+Requires at least two sources registered.
+```bash
+synap pull --interactive
+```
+**Expected:**
+- Each source shown with its name as a label (e.g. `[Agents]`) and a progression counter (e.g. `(1/2)`)
+- Pressing Escape on one source skips it and moves to the next
+- Deselecting all files on one source skips it and moves to the next
+- The process does **not** exit until all sources have been processed
+
+---
+
 ### 6.8 — Pull from a specific ref
 ```bash
 synap pull --ref main
@@ -573,7 +586,117 @@ Enter the same repo but a different `remotePath` (e.g. different subdirectory of
 
 ---
 
-### 10.5 — List with multiple sources
+### 10.5 — Register --from local collection file
+Create a collection file:
+```bash
+cat > test.collection.json << 'EOF'
+{
+  "sources": [
+    {
+      "name": "Imported Source",
+      "repo": "smartmarbles/synapcli",
+      "branch": "main",
+      "remotePath": "templates",
+      "localOutput": ".synap-imported"
+    }
+  ]
+}
+EOF
+synap register --from ./test.collection.json --yes
+```
+**Expected:**
+- Spinner shows while loading collection
+- Source "Imported Source" added to `synap.config.json`
+- Config backed up to `synap.config.json.bak`
+- `_importedFrom` field set on the imported source
+- `--yes` skips localOutput confirmation prompts
+
+---
+
+### 10.6 — Register --from with duplicate detection
+```bash
+synap register --from ./test.collection.json --yes
+```
+Run the same import again.
+
+**Expected:**
+- "Skipping 1 duplicate(s) already registered" message
+- "All sources in this collection are already registered. Nothing to import." message
+- Config unchanged
+
+---
+
+### 10.7 — Register --from with name conflict
+Create a collection with a source that has the same `name` as an existing source but a different repo/remotePath:
+```bash
+cat > conflict.collection.json << 'EOF'
+{
+  "sources": [
+    {
+      "name": "Imported Source",
+      "repo": "smartmarbles/synapcli",
+      "branch": "main",
+      "remotePath": "src",
+      "localOutput": ".synap-conflict"
+    }
+  ]
+}
+EOF
+synap register --from ./conflict.collection.json
+```
+**Expected:**
+- Name conflict prompt shown with options: `Rename to "Imported Source-imported"` or `Skip this source`
+- Selecting rename: source added with `-imported` suffix
+- Selecting skip: source not added
+
+---
+
+### 10.8 — Register --from GitHub shorthand
+```bash
+synap register --from smartmarbles/synapcli/synap.config.json --yes
+```
+**Expected:**
+- Collection fetched from GitHub API
+- Sources from the remote config imported (minus duplicates)
+- Origin label shows the raw.githubusercontent.com URL
+
+---
+
+### 10.9 — Register --from with --ref
+```bash
+synap register --from smartmarbles/synapcli/synap.config.json --ref main --yes
+```
+**Expected:** Collection fetched from the specified ref.
+
+---
+
+### 10.10 — Register --from invalid file
+```bash
+synap register --from ./nonexistent.json
+```
+**Expected:** "File not found" error. Exits with code 2 (ConfigError).
+
+---
+
+### 10.11 — Register --from invalid JSON
+```bash
+echo "not json" > bad.collection.json
+synap register --from ./bad.collection.json
+```
+**Expected:** "Failed to parse ... not valid JSON" error. Exits with code 2 (ConfigError).
+
+---
+
+### 10.12 — Register --from empty sources array
+```bash
+echo '{"sources":[]}' > empty.collection.json
+synap register --from ./empty.collection.json
+```
+**Expected:** "does not contain a valid sources array" error. Exits with code 2 (ConfigError).
+
+---
+
+### 10.13 — List with multiple sources
 ```bash
 synap list
 ```

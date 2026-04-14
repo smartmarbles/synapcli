@@ -11,6 +11,8 @@ export interface SourceConfig {
   include?: string[];
   /** Glob patterns — matching files are skipped */
   exclude?: string[];
+  /** Origin of the source — URL or file path of the collection it was imported from */
+  _importedFrom?: string;
 }
 
 // ─── Top-level Config ─────────────────────────────────────────────────────────
@@ -87,6 +89,12 @@ export interface ListOptions {
 export interface DeleteOptions {
   force?: boolean;
   dryRun?: boolean;
+}
+
+export interface RegisterOptions {
+  from?: string;
+  ref?: string;
+  yes?: boolean;
 }
 
 // ─── File utils ───────────────────────────────────────────────────────────────

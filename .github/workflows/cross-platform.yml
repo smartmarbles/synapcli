@@ -1,6 +1,8 @@
 name: Cross-Platform Smoke Tests
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch: # manual trigger
@@ -237,6 +239,37 @@ jobs:
           if ($proc.ExitCode -ne 4) {
             throw "FAIL: expected exit code 4 (NetworkError), got $($proc.ExitCode)"
           }
+
+      # ── Test 8: Register --from (collection import) ────────
+      - name: "Test 8: register --from local collection"
+        if: runner.os != 'Windows'
+        run: |
+          cd "$SYNAP_WORKDIR"
+          printf '%s\n' '{"sources":[{"name":"Imported","repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".synap-imported"}]}' > test.collection.json
+          OUTPUT=$(synap register --from ./test.collection.json --yes 2>&1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "Imported"
+          # Verify the source was added to config
+          cat synap.config.json | grep -q "synap-imported"
+
+      - name: "Test 8: register --from local collection (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Push-Location $env:SYNAP_WORKDIR
+          try {
+            $json = '{"sources":[{"name":"Imported","repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".synap-imported"}]}'
+            [System.IO.File]::WriteAllText((Join-Path $env:SYNAP_WORKDIR 'test.collection.json'), $json, (New-Object System.Text.UTF8Encoding $false))
+            $output = synap register --from ./test.collection.json --yes 2>&1 | Out-String
+            Write-Host $output
+            if ($output -notmatch 'Imported') {
+              throw "FAIL: expected 'Imported' in register output"
+            }
+            $config = Get-Content synap.config.json -Raw
+            if ($config -notmatch 'synap-imported') {
+              throw "FAIL: expected 'synap-imported' in config after import"
+            }
+          } finally { Pop-Location }
 
       # ── Cleanup ─────────────────────────────────────────────
       - name: Cleanup test directory

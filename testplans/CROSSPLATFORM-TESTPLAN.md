@@ -41,8 +41,9 @@ Run the full plan once per cell you want to cover:
 | 6 | Pull with postpull hook | `execSync` hook in native shell, OS-specific command syntax |
 | 7 | Status | Lockfile read, local file existence check |
 | 8 | Error exit code | `process.exitCode` propagation (Windows libuv regression guard) |
-| 9 | Completion install | Shell detection, profile path resolution, script append |
-| 10 | Uninstall cleanup | Profile block removal, `~/.synap/` cache deletion |
+| 9 | Register --from | Collection file parsing, config merge, backup, `--yes` non-interactive flag |
+| 10 | Completion install | Shell detection, profile path resolution, script append |
+| 11 | Uninstall cleanup | Profile block removal, `~/.synap/` cache deletion |
 
 ---
 
@@ -216,7 +217,34 @@ echo $LASTEXITCODE          # PowerShell
 
 ---
 
-### 9 — Completion install
+### 9 — Register --from (collection import)
+
+Create a collection file and import it:
+```bash
+cat > test.collection.json << 'EOF'
+{"sources":[{"name":"Imported","repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".synap-imported"}]}
+EOF
+
+synap register --from ./test.collection.json --yes
+```
+
+**Expected:**
+- Spinner shows while loading collection
+- Source "Imported" added to `synap.config.json`
+- Config backed up to `synap.config.json.bak`
+- `--yes` flag skips localOutput prompts
+
+**Verify:**
+```bash
+cat synap.config.json       # should contain "synap-imported" in sources
+ls synap.config.json.bak    # backup should exist
+```
+
+**What this proves:** Collection file parsing, JSON validation, config merge + backup, cross-platform file I/O for the import flow.
+
+---
+
+### 10 — Completion install
 ```bash
 synap completion --install
 ```
@@ -242,7 +270,7 @@ Tab completion should suggest commands/filenames.
 
 ---
 
-### 10 — Uninstall cleanup
+### 11 — Uninstall cleanup
 ```bash
 npm uninstall -g synapcli
 ```
@@ -282,8 +310,9 @@ Copy this table and fill it in per environment:
 | 6 | Postpull hook | | | | |
 | 7 | Status | | | | |
 | 8 | Error exit code | | | | |
-| 9 | Completion install | | | | |
-| 10 | Uninstall cleanup | | | | |
+| 9 | Register --from | | | | |
+| 10 | Completion install | | | | |
+| 11 | Uninstall cleanup | | | | |
 
 ---
 
@@ -296,7 +325,7 @@ The following commands are **not** tested here because they exercise the same la
 | `diff` | Same lockfile read + GitHub fetch as **status** + **list** |
 | `update` | Same fetch + write + preview as **pull** |
 | `delete` | Same lockfile write + `fs.unlinkSync` as **pull** |
-| `register` | Same interactive prompts + config write as **init** |
+| `register` (interactive) | Same interactive prompts + config write as **init** |
 | `deregister` | Same interactive prompts + config write as **init** |
 | `--ci` mode | CI output is a formatting layer on top of the same I/O — verified by unit tests |
 | `--interactive` | Same `@clack/prompts` multiselect as **init** prompts |
@@ -308,7 +337,7 @@ See [TESTPLAN.md](TESTPLAN.md) for exhaustive coverage of every command and flag
 
 ## Automated CI Coverage
 
-Tests 1–8 (everything except completion install and uninstall cleanup) run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every release and on manual dispatch. The workflow covers:
+Tests 1–9 (everything except completion install and uninstall cleanup) run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every push to main, on every release, and on manual dispatch. The workflow covers:
 
 | OS | Shell |
 |---|---|
@@ -317,4 +346,4 @@ Tests 1–8 (everything except completion install and uninstall cleanup) run aut
 | Windows (latest) | PowerShell 7+ (pwsh) |
 | Windows (latest) | Windows PowerShell 5.1 |
 
-Tests 9 (completion install) and 10 (uninstall cleanup) require interactive shell sessions and real profile files, so they remain manual-only.
+Tests 10 (completion install) and 11 (uninstall cleanup) require interactive shell sessions and real profile files, so they remain manual-only.

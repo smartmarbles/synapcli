@@ -108,6 +108,9 @@ program
 program
   .command('register')
   .description('Add one or more repositories to an existing synap.config.json')
+  .option('--from <source>', 'Import sources from a collection file, GitHub URL, or org/repo/path shorthand')
+  .option('--ref <ref>',     'Branch to use when fetching a remote collection (default: main)')
+  .option('-y, --yes',       'Accept default local output directories without prompting')
   .action(registerCommand);
 
 program

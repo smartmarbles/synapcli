@@ -60,6 +60,54 @@ Each `synap register` run asks for a repo, the remote sub-folder to pull from, a
 }
 ```
 
+### Importing sources from a collection file
+
+Instead of adding sources one at a time, you can import a pre-built **collection file** — a JSON file with a `sources[]` array that someone on your team (or the community) has curated. This is the fastest way to onboard a new project:
+
+```bash
+# Import from a local file
+synap register --from ./team-agents.collection.json
+
+# Import from a GitHub repo using shorthand
+synap register --from acme-org/ai-collections/react-stack.collection.json
+
+# Import from a raw GitHub URL
+synap register --from https://raw.githubusercontent.com/acme-org/ai-collections/main/react-stack.collection.json
+
+# Skip the localOutput prompts — accept defaults
+synap register --from ./team-agents.collection.json --yes
+
+# Fetch the collection from a specific branch or tag
+synap register --from acme-org/ai-collections/react-stack.collection.json --ref v2
+```
+
+SynapCLI detects duplicates (same repo + remotePath + branch), resolves name conflicts interactively, and backs up your existing config before merging. Each imported source is tagged with `_importedFrom` so you can trace where it came from.
+
+A collection file is just a JSON file with a `sources[]` array:
+
+```json
+{
+  "sources": [
+    {
+      "name": "Claude Skills",
+      "repo": "anthropics/skills",
+      "branch": "main",
+      "remotePath": "skills",
+      "localOutput": ".claude/skills"
+    },
+    {
+      "name": "Copilot Instructions",
+      "repo": "awesome-copilot/copilot-instructions",
+      "branch": "main",
+      "remotePath": "instructions",
+      "localOutput": ".github/instructions"
+    }
+  ]
+}
+```
+
+Share these with your team in a shared drive, a GitHub repo, or as a link in your onboarding docs.
+
 ### First pull — choose exactly what you want
 
 Unlike tools that clone an entire repository, SynapCLI lets you be selective. Browse what's available first, then pull only what you need:
@@ -76,7 +124,7 @@ synap pull skills/skill-creator       # pulls the skill-creator skill from Claud
 synap pull testing.instructions.md    # pulls the testing instructions file
 ```
 
-Or use interactive mode to pick from a checklist:
+Or use interactive mode to pick from a checklist. When multiple sources are registered, each source is shown with a label and a progression counter (e.g. `[Claude Skills] (1/4)`) — deselecting all files or pressing Escape on one source skips it and moves to the next:
 
 ```bash
 synap pull --interactive
