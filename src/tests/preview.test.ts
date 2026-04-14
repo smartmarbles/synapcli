@@ -63,6 +63,24 @@ describe('previewAndConfirm', () => {
       expect(result).toBe(items);
     });
 
+    it('includes label prefix in confirm message when label is provided', async () => {
+      vi.mocked(p.confirm).mockResolvedValueOnce(true);
+      const items = [makeItem('a.md', true)];
+      await previewAndConfirm(items, { verb: 'Pull', label: 'myrepo' });
+      expect(p.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('[myrepo]') })
+      );
+    });
+
+    it('includes source counter in confirm message when totalSources > 1', async () => {
+      vi.mocked(p.confirm).mockResolvedValueOnce(true);
+      const items = [makeItem('a.md', true)];
+      await previewAndConfirm(items, { verb: 'Pull', label: 'myrepo', sourceIndex: 2, totalSources: 3 });
+      expect(p.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('(2/3)') })
+      );
+    });
+
     it('shows only new files section when all items are new', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       vi.mocked(p.confirm).mockResolvedValueOnce(true);
@@ -111,25 +129,36 @@ describe('previewAndConfirm', () => {
       expect(result).toEqual([items[0]]);
     });
 
-    it('exits when multiselect is cancelled', async () => {
-      vi.mocked(p.isCancel).mockReturnValueOnce(true);
-      vi.mocked(p.multiselect).mockResolvedValueOnce(Symbol('cancel') as unknown as PreviewFile[]);
-      vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
-        throw new Error(`exit:${code ?? 0}`);
-      });
-      await expect(
-        previewAndConfirm([makeItem('a.md')], { verb: 'Pull', interactive: true })
-      ).rejects.toThrow('exit:0');
+    it('includes label prefix in multiselect message when label is provided', async () => {
+      const items = [makeItem('a.md')];
+      vi.mocked(p.multiselect).mockResolvedValueOnce(items);
+      await previewAndConfirm(items, { verb: 'Pull', interactive: true, label: 'myrepo' });
+      expect(p.multiselect).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('[myrepo]') })
+      );
     });
 
-    it('exits when no files are selected', async () => {
+    it('includes source counter in multiselect message when totalSources > 1', async () => {
+      const items = [makeItem('a.md')];
+      vi.mocked(p.multiselect).mockResolvedValueOnce(items);
+      await previewAndConfirm(items, { verb: 'Pull', interactive: true, label: 'myrepo', sourceIndex: 1, totalSources: 3 });
+      expect(p.multiselect).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('(1/3)') })
+      );
+    });
+
+    it('returns null when multiselect is cancelled', async () => {
+      vi.mocked(p.isCancel).mockReturnValueOnce(true);
+      vi.mocked(p.multiselect).mockResolvedValueOnce(Symbol('cancel') as unknown as PreviewFile[]);
+      const result = await previewAndConfirm([makeItem('a.md')], { verb: 'Pull', interactive: true });
+      expect(result).toBeNull();
+      expect(p.cancel).toHaveBeenCalled();
+    });
+
+    it('returns empty array when no files are selected', async () => {
       vi.mocked(p.multiselect).mockResolvedValueOnce([]);
-      vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
-        throw new Error(`exit:${code ?? 0}`);
-      });
-      await expect(
-        previewAndConfirm([makeItem('a.md')], { verb: 'Pull', interactive: true })
-      ).rejects.toThrow('exit:0');
+      const result = await previewAndConfirm([makeItem('a.md')], { verb: 'Pull', interactive: true });
+      expect(result).toEqual([]);
     });
   });
 });

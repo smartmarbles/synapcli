@@ -34,7 +34,8 @@ export async function pullCommand(
   const lock = loadLock();
   const globalResults = { written: 0, skipped: 0, failed: 0 };
 
-  for (const source of sources) {
+  for (let i = 0; i < sources.length; i++) {
+    const source = sources[i];
     const { owner, repo } = parseRepoString(source.repo);
     /* v8 ignore start */
     const ref = options.ref ?? source.branch ?? 'main';
@@ -102,6 +103,9 @@ export async function pullCommand(
     // ── Status preview + confirmation (or interactive multiselect) ──────────
     const confirmed = await previewAndConfirm(previewItems, {
       verb: 'Pull',
+      label,
+      sourceIndex: i + 1,
+      totalSources: sources.length,
       force: options.force,
       interactive: options.interactive,
     });

@@ -18,11 +18,16 @@ export async function previewAndConfirm(
   items: PreviewFile[],
   opts: {
     verb: 'Pull' | 'Update';
+    label?: string;
+    sourceIndex?: number;
+    totalSources?: number;
     force?: boolean;
     interactive?: boolean;
   }
 ): Promise<PreviewFile[] | null> {
-  const { verb, force, interactive } = opts;
+  const { verb, label, force, interactive, sourceIndex, totalSources } = opts;
+  const counter = totalSources && totalSources > 1 ? `(${sourceIndex}/${totalSources}) ` : '';
+  const prefix = label ? `[${label}] ${counter}` : counter;
 
   if (items.length === 0) return [];
 
@@ -33,7 +38,7 @@ export async function previewAndConfirm(
   if (interactive) {
     console.log();
     const selected = await p.multiselect<PreviewFile>({
-      message: `Select files to ${verb.toLowerCase()} (↑↓ navigate, space toggle, enter confirm):`,
+      message: `${prefix}Select files to ${verb.toLowerCase()} (↑↓ navigate, space toggle, enter confirm):`,
       options: items.map((item) => ({
         value: item,
         label: chalk.white(item.file.path),
@@ -48,17 +53,15 @@ export async function previewAndConfirm(
     });
 
     if (p.isCancel(selected)) {
-      p.cancel(`${verb} cancelled.`);
-      /* v8 ignore start */
-      process.exit(0);
-      /* v8 ignore stop */
+      p.cancel(`${verb} cancelled for this source.`);
+      return null;
     }
 
     const chosen = selected as PreviewFile[];
 
     if (chosen.length === 0) {
-      log.warn('No files selected. Nothing to do.');
-      process.exit(0);
+      log.warn('No files selected — skipping this source.');
+      return [];
     }
 
     return chosen;
@@ -96,7 +99,7 @@ export async function previewAndConfirm(
   }
 
   const confirmed = await p.confirm({
-    message: `${verb} ${items.length} file(s)?`,
+    message: `${prefix}${verb} ${items.length} file(s)?`,
     initialValue: true,
   });
 
