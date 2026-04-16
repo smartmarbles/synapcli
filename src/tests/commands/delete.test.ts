@@ -15,7 +15,7 @@ vi.mock('../../utils/files.js', async (importOriginal) => {
 });
 
 import * as p                            from '@clack/prompts';
-import { deleteCommand }                  from '../../commands/delete.js';
+import { deleteCommand, cleanOrphanedCollections } from '../../commands/delete.js';
 import { saveConfig, saveLock, loadLock } from '../../lib/config.js';
 import { setCI }                          from '../../utils/context.js';
 import * as filesUtils                    from '../../utils/files.js';
@@ -224,5 +224,48 @@ describe('deleteCommand', () => {
     const lock = loadLock(testDir);
     expect(lock[`${REPO_KEY}::summarizer.md`]).toBeUndefined();
     expect(lock[`${REPO_KEY}::ghost.md`]).toBeUndefined();
+  });
+
+  it('removes orphaned _collection:: entries when all collection files are deleted', async () => {
+    writeFileSync(join(testDir, 'summarizer.md'), '# Summarizer');
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { ...LOCK_ENTRY, collection: 'React Kit' },
+      '_collection::React Kit': { sha: 'def456', ref: 'main', pulledAt: new Date().toISOString(), origin: 'acme/repo/react.collection.json', pathOverrides: {} },
+    }, testDir);
+
+    await deleteCommand(undefined, { force: true });
+
+    const lock = loadLock(testDir);
+    expect(lock[`${REPO_KEY}::summarizer.md`]).toBeUndefined();
+    expect(lock['_collection::React Kit']).toBeUndefined();
+  });
+});
+
+describe('cleanOrphanedCollections', () => {
+  it('removes _collection:: entries with no remaining file references', () => {
+    const lock: Record<string, { collection?: string; sha?: string; [k: string]: unknown }> = {
+      '_collection::Kit A': { sha: 'x', ref: 'main' },
+      '_collection::Kit B': { sha: 'y', ref: 'main' },
+      'acme/repo::a.md': { sha: '1', ref: 'main', collection: 'Kit B' },
+    };
+    const removed = cleanOrphanedCollections(lock);
+    expect(removed).toBe(1);
+    expect(lock['_collection::Kit A']).toBeUndefined();
+    expect(lock['_collection::Kit B']).toBeDefined();
+  });
+
+  it('returns 0 when no orphaned entries exist', () => {
+    const lock: Record<string, { collection?: string; [k: string]: unknown }> = {
+      '_collection::Kit': { sha: 'x', ref: 'main' },
+      'acme/repo::a.md': { sha: '1', ref: 'main', collection: 'Kit' },
+    };
+    expect(cleanOrphanedCollections(lock)).toBe(0);
+  });
+
+  it('returns 0 when there are no _collection:: entries at all', () => {
+    const lock: Record<string, { collection?: string; [k: string]: unknown }> = {
+      'acme/repo::a.md': { sha: '1', ref: 'main' },
+    };
+    expect(cleanOrphanedCollections(lock)).toBe(0);
   });
 });

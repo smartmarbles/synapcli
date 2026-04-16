@@ -17,9 +17,9 @@ vi.mock('../../lib/retry.js', () => ({
   sleep:     vi.fn(),
 }));
 
-import { statusCommand }                from '../../commands/status.js';
+import { statusCommand, collectCollectionEntries } from '../../commands/status.js';
 import { saveConfig, saveLock }         from '../../lib/config.js';
-import type { SynapConfig }             from '../../types.js';
+import type { SynapConfig, LockFile }   from '../../types.js';
 
 const OWNER    = 'acme';
 const REPO     = 'agents';
@@ -227,5 +227,58 @@ describe('statusCommand', () => {
 
     const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(output.toLowerCase()).toContain('need attention');
+  });
+
+  it('shows collection-installed files grouped by collection name', async () => {
+    saveLock({
+      [`${REPO_KEY}::summarizer.md`]: { sha: 'sha-v1', ref: BRANCH, pulledAt: new Date().toISOString(), collection: 'React Kit' },
+      [`${REPO_KEY}::classifier.md`]: { sha: 'sha-v1', ref: BRANCH, pulledAt: new Date().toISOString(), collection: 'React Kit' },
+    }, testDir);
+    writeFileSync(join(testDir, 'summarizer.md'), '# a');
+    writeFileSync(join(testDir, 'classifier.md'), '# b');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeListResponse([
+      { type: 'file', path: 'summarizer.md', sha: 'sha-v1', size: 100 },
+      { type: 'file', path: 'classifier.md', sha: 'sha-v1', size: 100 },
+    ])));
+
+    await statusCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Collections');
+    expect(output).toContain('React Kit');
+    expect(output).toContain('2 file');
+  });
+});
+
+describe('collectCollectionEntries', () => {
+  it('groups lock entries by collection name', () => {
+    const lock: LockFile = {
+      'acme/repo::a.md': { sha: '1', ref: 'main', pulledAt: '', collection: 'Kit A' },
+      'acme/repo::b.md': { sha: '2', ref: 'main', pulledAt: '', collection: 'Kit A' },
+      'acme/repo::c.md': { sha: '3', ref: 'main', pulledAt: '', collection: 'Kit B' },
+    };
+    const result = collectCollectionEntries(lock);
+    expect(result.size).toBe(2);
+    expect(result.get('Kit A')).toEqual(['acme/repo::a.md', 'acme/repo::b.md']);
+    expect(result.get('Kit B')).toEqual(['acme/repo::c.md']);
+  });
+
+  it('skips entries without a collection field', () => {
+    const lock: LockFile = {
+      'acme/repo::a.md': { sha: '1', ref: 'main', pulledAt: '' },
+      'acme/repo::b.md': { sha: '2', ref: 'main', pulledAt: '', collection: 'Kit' },
+    };
+    const result = collectCollectionEntries(lock);
+    expect(result.size).toBe(1);
+    expect(result.get('Kit')).toEqual(['acme/repo::b.md']);
+  });
+
+  it('returns an empty map when no collection entries exist', () => {
+    const lock: LockFile = {
+      'acme/repo::a.md': { sha: '1', ref: 'main', pulledAt: '' },
+    };
+    const result = collectCollectionEntries(lock);
+    expect(result.size).toBe(0);
   });
 });

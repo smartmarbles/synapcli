@@ -44,6 +44,7 @@ Run the full plan once per cell you want to cover:
 | 9 | Register --from | Collection file parsing, config merge, backup, `--yes` non-interactive flag |
 | 10 | Completion install | Shell detection, profile path resolution, script append |
 | 11 | Uninstall cleanup | Profile block removal, `~/.synap/` cache deletion |
+| 12 | Install (asset collection) | Collection file parsing, preset remapping, file download + write, lockfile write |
 
 ---
 
@@ -296,6 +297,34 @@ synap --version             # should fail — command not found
 
 ---
 
+### 12 — Install (asset collection)
+
+Create an asset collection file and install it:
+```bash
+cat > test-assets.collection.json << 'EOF'
+{"name":"Test Kit","assets":[{"repo":"smartmarbles/synapcli","branch":"main","path":"templates/sync-agents.yml","defaultOutput":".github/workflows"}]}
+EOF
+
+synap install ./test-assets.collection.json --yes
+```
+
+**Expected:**
+- File downloaded to `.github/workflows/sync-agents.yml`
+- Lockfile entry created with `collection: "Test Kit"`
+- `_collection::Test Kit` definition entry in lockfile
+- Preset defaulted to `copilot` and saved to config
+
+**Verify:**
+```bash
+cat synap.lock.json         # should contain _collection::Test Kit entry
+cat synap.config.json       # should contain "preset": "copilot"
+ls .github/workflows/sync-agents.yml  # file should exist
+```
+
+**What this proves:** Asset collection parsing, preset resolution, GitHub API download, file write with directory creation, lockfile collection tracking, cross-platform path handling.
+
+---
+
 ## Quick-Reference Results Template
 
 Copy this table and fill it in per environment:
@@ -313,6 +342,7 @@ Copy this table and fill it in per environment:
 | 9 | Register --from | | | | |
 | 10 | Completion install | | | | |
 | 11 | Uninstall cleanup | | | | |
+| 12 | Install (asset collection) | | | | |
 
 ---
 
@@ -330,6 +360,8 @@ The following commands are **not** tested here because they exercise the same la
 | `--ci` mode | CI output is a formatting layer on top of the same I/O — verified by unit tests |
 | `--interactive` | Same `@clack/prompts` multiselect as **init** prompts |
 | `--dry-run` | Pure logic — no platform I/O surface |
+| `collection create` | Same lockfile read + config read as **status**; file write same as **pull** |
+| `install --preset` | Preset remapping is pure logic — verified by unit tests |
 
 See [TESTPLAN.md](TESTPLAN.md) for exhaustive coverage of every command and flag.
 
@@ -337,7 +369,7 @@ See [TESTPLAN.md](TESTPLAN.md) for exhaustive coverage of every command and flag
 
 ## Automated CI Coverage
 
-Tests 1–2 and 4–9 run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every push to main, on every release, and on manual dispatch. Test 3 (Init) is skipped in CI because it requires interactive TTY prompts — the workflow seeds config programmatically instead. The workflow covers:
+Tests 1–2 and 4–9 and 12 run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every push to main, on every release, and on manual dispatch. Test 3 (Init) is skipped in CI because it requires interactive TTY prompts — the workflow seeds config programmatically instead. The workflow covers:
 
 | OS | Shell |
 |---|---|

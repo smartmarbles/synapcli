@@ -86,34 +86,40 @@ synap register
 # 4. Remove a repository
 synap deregister
 
-# 5. Browse available files in the remote repo
+# 5. Install a curated collection of files
+synap install react-kit.collection.json
+
+# 6. Browse available files in the remote repo
 synap list
 
-# 5b. List files under a specific subfolder
+# 6b. List files under a specific subfolder
 synap list skills
 
-# 6. See the sync status of all tracked files
+# 7. See the sync status of all tracked files
 synap status
 
-# 7. Pull everything down
+# 8. Pull everything down
 synap pull
 
-# 8. Pull a specific file at a specific ref (branch, tag, or commit SHA)
+# 9. Pull a specific file at a specific ref (branch, tag, or commit SHA)
 synap pull --ref v1.2.0 copilot-instructions<TAB>
 
-# 9. Pull interactively — choose files from a checklist
+# 10. Pull interactively — choose files from a checklist
 synap pull --interactive
 
-# 10. See what changed upstream vs your local files
+# 11. See what changed upstream vs your local files
 synap diff
 
-# 11. Pull only files that have changed
+# 12. Pull only files that have changed
 synap update
 
-# 12. Delete a tracked file
+# 13. Delete a tracked file
 synap delete summarizer
 
-# 13. Install shell tab completion (only needed if skipped during init)
+# 14. Create a collection file from your current tracked files
+synap collection create my-kit
+
+# 15. Install shell tab completion (only needed if skipped during init)
 synap completion --install
 ```
 
@@ -159,10 +165,11 @@ Show the sync status of every tracked file at a glance — similar to `git statu
 synap status
 ```
 
-Output groups files into four states:
+Output groups files into five states:
 - **Changed upstream** — the remote file has a newer SHA than your local copy
 - **Missing locally** — was pulled before but the local file has been deleted
 - **Not yet pulled** — exists in the remote repo but hasn't been pulled yet
+- **Removed upstream** — file was tracked but has been deleted from the remote repo
 - **Up to date** — local file matches the remote SHA exactly
 
 ---
@@ -262,6 +269,35 @@ synap deregister
 
 ---
 
+### `synap install <source>`
+Install files from a **collection file** — a curated set of individual files from one or more repos, hand-picked by an author. Unlike `register --from` (which imports repo-level sources), `install` downloads specific files directly.
+
+```bash
+synap install ./react-kit.collection.json          # local file
+synap install org/repo/react-kit.collection.json    # GitHub shorthand
+synap install --yes                                 # accept all defaults, no prompts
+synap install --preset claude                       # override stored preset
+synap install --dry-run                             # preview without writing
+```
+
+On first install, SynapCLI prompts you to choose a development system preset (GitHub Copilot, Claude Code, Gemini, Codex, or none). The preset remaps default output directories — e.g., `.github/skills` becomes `.claude/skills` for Claude users. The choice is saved to `synap.config.json` and never asked again.
+
+Each file is tracked individually in the lockfile with a `collection` tag, and a `_collection::Name` definition entry stores the resolved path mappings for future updates.
+
+---
+
+### `synap collection create <name>`
+Author-side command. Reads your lockfile and lets you select tracked files to bundle into a shareable collection file.
+
+```bash
+synap collection create react-kit           # interactive — pick files, name, description
+synap collection create react-kit --json    # output to stdout as JSON (for piping/CI)
+```
+
+Writes `<name>.collection.json` to the current directory. The file contains the selected files' `repo`, `branch`, `path`, and `defaultOutput` — ready for consumers to install with `synap install`.
+
+---
+
 ## Configuration
 
 `synap.config.json` supports both a simple single-source format and a multi-source format.
@@ -322,6 +358,7 @@ synap deregister
 | `exclude` | Glob patterns — matching files are skipped |
 | `postpull` | Shell command run automatically after any pull or update |
 | `sources` | Array of the above for multi-source projects |
+| `preset` | Development system preset for collection installs (`copilot`, `claude`, `gemini`, `codex`, or `none`) |
 | `_importedFrom` | (Auto-set by `register --from`) Origin URL or file path of the collection the source was imported from |
 
 ### Collection files
@@ -357,6 +394,40 @@ Import with `synap register --from <path-or-url>`. The `--from` flag accepts thr
 | GitHub shorthand | `org/repo/path/to/file.collection.json` |
 | Raw GitHub URL | `https://raw.githubusercontent.com/org/repo/main/file.json` |
 
+### Asset collection files
+
+An asset collection file is a JSON file listing individual files (not entire repos). Created with `synap collection create` and consumed with `synap install`. This is **asset-level sharing** — a React expert can hand-pick the exact 7 files you need instead of pointing you at 3 repos.
+
+```json
+{
+  "name": "React Development Kit",
+  "description": "Curated assets for React development",
+  "assets": [
+    {
+      "repo": "acme/ai-agents",
+      "branch": "main",
+      "path": "skills/frontend-design/SKILL.md",
+      "defaultOutput": ".github/skills"
+    },
+    {
+      "repo": "acme/tools",
+      "branch": "main",
+      "path": "scripts/lint-components.py",
+      "defaultOutput": "scripts"
+    }
+  ]
+}
+```
+
+| Field | Description |
+|---|---|
+| `name` | Human-readable name for the collection |
+| `description` | (Optional) Short description |
+| `assets[].repo` | `owner/repo` |
+| `assets[].branch` | Branch, tag, or SHA |
+| `assets[].path` | Full path to the file within the repo |
+| `assets[].defaultOutput` | Creator's suggested local directory (remapped by preset on install) |
+
 ---
 
 ## Lockfile
@@ -369,6 +440,26 @@ After every pull, SynapCLI writes `synap.lock.json` recording the exact commit S
     "sha": "a1b2c3d...",
     "ref": "main",
     "pulledAt": "2024-11-01T12:00:00.000Z"
+  }
+}
+```
+
+Files installed from a collection include a `collection` tag and the lockfile also stores a `_collection::Name` definition entry with the resolved path mappings:
+
+```json
+{
+  "acme/ai-agents::skills/SKILL.md": {
+    "sha": "a1b2c3d...",
+    "ref": "main",
+    "pulledAt": "2026-04-15T12:00:00.000Z",
+    "collection": "React Kit"
+  },
+  "_collection::React Kit": {
+    "sha": "def456...",
+    "ref": "main",
+    "pulledAt": "2026-04-15T12:00:00.000Z",
+    "origin": "org/repo/react-kit.collection.json",
+    "pathOverrides": { ".github/skills": ".claude/skills" }
   }
 }
 ```

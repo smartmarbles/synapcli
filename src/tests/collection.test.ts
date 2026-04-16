@@ -9,9 +9,12 @@ import {
   sourceKey,
   checkDuplicates,
   backupConfig,
+  loadAssetCollection,
+  groupByOutput,
+  assetKey,
 } from '../lib/collection.js';
 import { saveConfig, CONFIG_FILE } from '../lib/config.js';
-import type { SourceConfig } from '../types.js';
+import type { SourceConfig, CollectionAsset } from '../types.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -318,5 +321,216 @@ describe('backupConfig', () => {
   it('returns null when no config exists', () => {
     const result = backupConfig(join(testDir, 'nonexistent'));
     expect(result).toBeNull();
+  });
+});
+
+// ─── Asset helpers ────────────────────────────────────────────────────────────
+
+function makeAsset(overrides: Partial<CollectionAsset> = {}): CollectionAsset {
+  return {
+    repo: 'acme/agents', branch: 'main', path: 'skills/react/SKILL.md', defaultOutput: '.github/skills',
+    ...overrides,
+  };
+}
+
+// ─── assetKey ─────────────────────────────────────────────────────────────────
+
+describe('assetKey', () => {
+  it('builds key from repo and path', () => {
+    expect(assetKey(makeAsset())).toBe('acme/agents::skills/react/SKILL.md');
+  });
+
+  it('uses different paths for different assets', () => {
+    const a = assetKey(makeAsset({ path: 'a.md' }));
+    const b = assetKey(makeAsset({ path: 'b.md' }));
+    expect(a).not.toBe(b);
+  });
+});
+
+// ─── loadAssetCollection ──────────────────────────────────────────────────────
+
+describe('loadAssetCollection', () => {
+  it('loads a valid local asset collection', async () => {
+    const filePath = join(testDir, 'react.collection.json');
+    writeFileSync(filePath, JSON.stringify({
+      name: 'React Kit',
+      description: 'Curated React assets',
+      assets: [makeAsset()],
+    }));
+
+    const { collection, originLabel } = await loadAssetCollection({ type: 'local', path: filePath });
+    expect(collection.name).toBe('React Kit');
+    expect(collection.description).toBe('Curated React assets');
+    expect(collection.assets).toHaveLength(1);
+    expect(originLabel).toBe(filePath);
+  });
+
+  it('sets description to undefined when not a string', async () => {
+    const filePath = join(testDir, 'no-desc.collection.json');
+    writeFileSync(filePath, JSON.stringify({
+      name: 'Minimal',
+      assets: [makeAsset()],
+    }));
+
+    const { collection } = await loadAssetCollection({ type: 'local', path: filePath });
+    expect(collection.description).toBeUndefined();
+  });
+
+  it('throws when local file does not exist', async () => {
+    await expect(
+      loadAssetCollection({ type: 'local', path: '/nonexistent.json' })
+    ).rejects.toThrow('File not found');
+  });
+
+  it('throws on invalid JSON', async () => {
+    const filePath = join(testDir, 'bad.json');
+    writeFileSync(filePath, 'not json');
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('not valid JSON');
+  });
+
+  it('throws when name field is missing', async () => {
+    const filePath = join(testDir, 'no-name.json');
+    writeFileSync(filePath, JSON.stringify({ assets: [makeAsset()] }));
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('missing a valid "name" field');
+  });
+
+  it('throws when assets array is missing', async () => {
+    const filePath = join(testDir, 'no-assets.json');
+    writeFileSync(filePath, JSON.stringify({ name: 'Test' }));
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('does not contain a valid "assets" array');
+  });
+
+  it('throws when assets array is empty', async () => {
+    const filePath = join(testDir, 'empty-assets.json');
+    writeFileSync(filePath, JSON.stringify({ name: 'Test', assets: [] }));
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('does not contain a valid "assets" array');
+  });
+
+  it('throws when asset is missing repo', async () => {
+    const filePath = join(testDir, 'bad-asset.json');
+    writeFileSync(filePath, JSON.stringify({
+      name: 'Test',
+      assets: [{ branch: 'main', path: 'a.md', defaultOutput: '.' }],
+    }));
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('Asset at index 0');
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('missing a valid "repo" field');
+  });
+
+  it('throws when asset is missing branch', async () => {
+    const filePath = join(testDir, 'no-branch.json');
+    writeFileSync(filePath, JSON.stringify({
+      name: 'Test',
+      assets: [{ repo: 'acme/a', path: 'a.md', defaultOutput: '.' }],
+    }));
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('missing a valid "branch" field');
+  });
+
+  it('throws when asset is missing path', async () => {
+    const filePath = join(testDir, 'no-path.json');
+    writeFileSync(filePath, JSON.stringify({
+      name: 'Test',
+      assets: [{ repo: 'acme/a', branch: 'main', defaultOutput: '.' }],
+    }));
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('missing a valid "path" field');
+  });
+
+  it('throws when asset is missing defaultOutput', async () => {
+    const filePath = join(testDir, 'no-output.json');
+    writeFileSync(filePath, JSON.stringify({
+      name: 'Test',
+      assets: [{ repo: 'acme/a', branch: 'main', path: 'a.md' }],
+    }));
+
+    await expect(
+      loadAssetCollection({ type: 'local', path: filePath })
+    ).rejects.toThrow('missing a valid "defaultOutput" field');
+  });
+
+  it('loads from a GitHub URL via fetchFileContent', async () => {
+    const collection = {
+      name: 'Remote Kit',
+      assets: [makeAsset()],
+    };
+    const content = JSON.stringify(collection);
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: (h: string) => h === 'X-RateLimit-Remaining' ? '60' : '0' },
+      json: () => Promise.resolve({
+        type: 'file',
+        path: 'react.collection.json',
+        sha: 'abc',
+        size: content.length,
+        encoding: 'base64',
+        content: Buffer.from(content).toString('base64'),
+      }),
+    }));
+
+    const result = await loadAssetCollection({
+      type: 'url',
+      url: 'https://raw.githubusercontent.com/org/repo/main/react.collection.json',
+      owner: 'org',
+      repo: 'repo',
+      path: 'react.collection.json',
+      ref: 'main',
+    });
+
+    expect(result.collection.name).toBe('Remote Kit');
+    expect(result.originLabel).toBe('https://raw.githubusercontent.com/org/repo/main/react.collection.json');
+  });
+});
+
+// ─── groupByOutput ────────────────────────────────────────────────────────────
+
+describe('groupByOutput', () => {
+  it('groups assets by resolved output', () => {
+    const a1 = makeAsset({ path: 'a.md', defaultOutput: '.github/skills' });
+    const a2 = makeAsset({ path: 'b.md', defaultOutput: '.github/skills' });
+    const a3 = makeAsset({ path: 'c.md', defaultOutput: 'scripts' });
+
+    const resolved = new Map<string, string>();
+    resolved.set(assetKey(a1), '.claude/skills');
+    resolved.set(assetKey(a2), '.claude/skills');
+    resolved.set(assetKey(a3), 'scripts');
+
+    const groups = groupByOutput([a1, a2, a3], resolved);
+    expect(groups.size).toBe(2);
+    expect(groups.get('.claude/skills')).toHaveLength(2);
+    expect(groups.get('scripts')).toHaveLength(1);
+  });
+
+  it('falls back to defaultOutput when no resolved mapping', () => {
+    const a1 = makeAsset({ path: 'a.md', defaultOutput: '.github/skills' });
+    const groups = groupByOutput([a1], new Map());
+    expect(groups.get('.github/skills')).toHaveLength(1);
+  });
+
+  it('returns empty map for empty assets', () => {
+    const groups = groupByOutput([], new Map());
+    expect(groups.size).toBe(0);
   });
 });

@@ -27,6 +27,8 @@ export interface SynapConfig {
   localOutput?: string;
   /** Shell command to run after any pull/update operation */
   postpull?: string;
+  /** Development system preset for collection installs (e.g. 'copilot', 'claude', 'codex') */
+  preset?: string;
 }
 
 // ─── Lockfile ─────────────────────────────────────────────────────────────────
@@ -35,6 +37,12 @@ export interface LockEntry {
   sha: string;
   ref: string;
   pulledAt: string;
+  /** Name of the collection that installed this file (if any) */
+  collection?: string;
+  /** For _collection:: entries: where the collection was fetched from */
+  origin?: string;
+  /** For _collection:: entries: resolved output mappings (creator default → consumer actual) */
+  pathOverrides?: Record<string, string>;
 }
 
 /** Keys are namespaced as "owner/repo::path/to/file" */
@@ -127,7 +135,26 @@ export interface StatusEntry {
   status: FileStatus;
   source: SourceConfig;
 }
+// ─── Collections ──────────────────────────────────────────────────────────────
 
+export interface CollectionAsset {
+  repo: string;
+  branch: string;
+  path: string;
+  defaultOutput: string;
+}
+
+export interface CollectionFile {
+  name: string;
+  description?: string;
+  assets: CollectionAsset[];
+}
+
+export interface InstallOptions {
+  yes?: boolean;
+  preset?: string;
+  dryRun?: boolean;
+}
 // ─── Exit Codes ───────────────────────────────────────────────────────────────
 
 export const ExitCode = {

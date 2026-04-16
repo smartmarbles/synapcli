@@ -19,7 +19,7 @@ These tests verify behaviour when no `synap.config.json` exists yet.
 ```bash
 synap --version
 ```
-**Expected:** Prints `1.0.0` and exits cleanly.
+**Expected:** Prints `1.0.6` and exits cleanly.
 
 ---
 
@@ -820,7 +820,7 @@ synap delete <partial><TAB>
 ```bash
 synap <TAB>
 ```
-**Expected:** All command names shown as completion options (init, pull, list, status, diff, update, delete, doctor, completion, register, deregister).
+**Expected:** All command names shown as completion options (init, pull, list, status, diff, update, delete, doctor, completion, register, deregister, install, collection).
 
 ---
 
@@ -1042,3 +1042,155 @@ ls ~/.synap    # directory should not exist
 synap --version   # should fail — command not found
 ```
 **Expected:** All three verify the tool was fully removed.
+
+---
+
+## Section 21 — Install (Asset Collection)
+
+### 21.1 — Install from a local collection file
+Create a test asset collection and install it:
+```bash
+cat > test.collection.json << 'EOF'
+{"name":"Test Kit","assets":[{"repo":"smartmarbles/synapcli","branch":"main","path":"templates/sync-agents.yml","defaultOutput":".github/workflows"}]}
+EOF
+
+synap install ./test.collection.json --yes
+```
+**Expected:**
+- File downloaded and written to `.github/workflows/sync-agents.yml`
+- Lockfile entry created with `collection: "Test Kit"`
+- `_collection::Test Kit` definition entry in lockfile with `origin` and `pathOverrides`
+- Preset defaults to `copilot` (since `--yes` was used and no preset set)
+- `synap.config.json` gains `"preset": "copilot"`
+
+---
+
+### 21.2 — Install with explicit preset
+```bash
+synap install ./test.collection.json --yes --preset claude
+```
+**Expected:**
+- `.github/workflows` remapped to `.claude/workflows` (prefix swap)
+- Lockfile `_collection::` entry shows `pathOverrides` with the mapping
+
+---
+
+### 21.3 — Install dry run
+```bash
+synap install ./test.collection.json --dry-run
+```
+**Expected:**
+- Files and output directories listed but NOT written to disk
+- No lockfile changes
+- No config changes
+
+---
+
+### 21.4 — Install with interactive output override
+```bash
+synap install ./test.collection.json
+```
+When prompted for output directory, enter a custom path (e.g. `custom/dir`).
+
+**Expected:**
+- File written to the custom path
+- `pathOverrides` in lockfile reflects the custom mapping
+
+---
+
+### 21.5 — Install from GitHub shorthand
+```bash
+synap install org/repo/react-kit.collection.json --yes
+```
+**Expected:**
+- Collection fetched from GitHub API
+- Assets downloaded and written locally
+- `origin` in `_collection::` entry is the resolved raw GitHub URL
+
+---
+
+### 21.6 — Install with invalid preset
+```bash
+synap install ./test.collection.json --preset bogus
+```
+**Expected:** Error message about invalid preset. Exits with code 2 (ConfigError).
+
+---
+
+### 21.7 — Install with missing collection file
+```bash
+synap install ./nonexistent.json
+```
+**Expected:** Error: file not found. Exits with code 2 (ConfigError).
+
+---
+
+## Section 22 — Collection Create
+
+### 22.1 — Create a collection interactively
+Ensure you have tracked files in `synap.lock.json` (run `synap pull` first), then:
+```bash
+synap collection create my-kit
+```
+**Expected:**
+- Multiselect shows all tracked files with their default output directories
+- After selecting files and entering name/description, `my-kit.collection.json` is written
+- File contains valid JSON with `name`, `description` (if provided), and `assets[]`
+- Each asset has `repo`, `branch`, `path`, `defaultOutput`
+
+---
+
+### 22.2 — Create with --json flag
+```bash
+synap collection create my-kit --json
+```
+**Expected:**
+- All tracked files output to stdout as JSON (no interactive prompts)
+- No file written to disk
+- Output is valid JSON with `name` and `assets[]`
+
+---
+
+### 22.3 — Create with empty lockfile
+Delete or empty `synap.lock.json`, then:
+```bash
+synap collection create my-kit
+```
+**Expected:** Error: no tracked files found. Exits with code 2 (ConfigError).
+
+---
+
+### 22.4 — Create in CI mode without --json
+```bash
+synap collection create my-kit --ci
+```
+**Expected:** Error: requires `--json` in CI mode. Exits with code 2 (ConfigError).
+
+---
+
+## Section 23 — Status (Collection Grouping)
+
+### 23.1 — Status shows collection-installed files grouped by collection name
+Install a collection (`synap install ... --yes`), then:
+```bash
+synap status
+```
+**Expected:**
+- Standard status groups shown (up-to-date, changed, etc.)
+- A "Collections" section appears listing installed collections
+- Each collection shows its name and file count
+
+---
+
+## Section 24 — Delete (Collection Cleanup)
+
+### 24.1 — Delete removes orphaned collection definitions
+Install a collection, then delete all its files:
+```bash
+synap delete --force
+```
+**Expected:**
+- Files deleted from disk
+- Individual lock entries removed
+- `_collection::Name` definition entry automatically removed (orphan cleanup)
+- Message: "Removed N orphaned collection definition(s) from lockfile"

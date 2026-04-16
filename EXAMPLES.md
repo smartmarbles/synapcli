@@ -108,6 +108,44 @@ A collection file is just a JSON file with a `sources[]` array:
 
 Share these with your team in a shared drive, a GitHub repo, or as a link in your onboarding docs.
 
+### Creating an asset collection
+
+If you want to share **specific files** rather than entire repo sources, use `synap collection create`. This reads your lockfile and lets you hand-pick exactly which tracked files to bundle:
+
+```bash
+synap collection create react-kit
+```
+
+```
+SynapCLI — Create Collection
+
+Select files to include:
+  ✔ anthropics/skills :: skills/summarise.md              → .claude/skills
+  ✔ awesome-copilot/copilot-instructions :: react.md      → .github/instructions
+  ◻ awesome-copilot/copilot-instructions :: python.md     → .github/instructions
+  ✔ acme-org/tools :: scripts/lint-components.py          → scripts
+
+Collection name: React Development Kit
+Description: Curated React assets for new team members
+
+✔ Wrote react-kit.collection.json (3 assets)
+```
+
+The output file is an **asset collection** — it lists individual files, not repo sources. Consumers install it with `synap install`:
+
+```bash
+synap install react-kit.collection.json
+```
+
+On first install, the consumer is prompted to choose their development system (Copilot, Claude, Gemini, Codex). This remaps output directories automatically — e.g., your `.github/skills` default becomes `.claude/skills` for a Claude user. The preset is saved to config and never asked again.
+
+For CI or non-interactive use:
+
+```bash
+synap collection create react-kit --json > react-kit.collection.json
+synap install react-kit.collection.json --yes --preset claude
+```
+
 ### First pull — choose exactly what you want
 
 Unlike tools that clone an entire repository, SynapCLI lets you be selective. Browse what's available first, then pull only what you need:
@@ -189,3 +227,4 @@ Add `synap update --ci --force` to your GitHub Actions workflow (see the ready-m
 - **Per-source filtering** — Each source supports `include` and `exclude` patterns so you can limit what gets pulled. For example, `"**/*.md"` means "only Markdown files, anywhere in the folder". This is useful when a repo contains a mix of file types and you only want certain ones.
 - **Named sources** — The `name` field is used in `synap status` and `synap list --source` output. Choose names that are meaningful to your team.
 - **Scoped listing** — `synap list --source "Claude Skills"` browses only that source's files without affecting the others.
+- **Asset collections** — Use `synap collection create` to bundle specific files into a shareable collection, and `synap install` to consume them. Unlike `register --from` (which shares repo sources), asset collections share individual hand-picked files with automatic preset remapping.

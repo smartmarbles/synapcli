@@ -8,7 +8,7 @@ import { deleteFile, fileExists, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
 import { ExitCode } from '../types.js';
-import type { DeleteOptions } from '../types.js';
+import type { DeleteOptions, LockFile } from '../types.js';
 
 export async function deleteCommand(
   name: string | undefined,
@@ -133,5 +133,40 @@ export async function deleteCommand(
     fatal(`${totalFailed} file(s) failed to delete`, ExitCode.GeneralError);
   }
 
+  // ── Clean up orphaned _collection:: entries ─────────────────────────────
+  const orphaned = cleanOrphanedCollections(lock);
+  if (orphaned > 0) {
+    saveLock(lock);
+    /* v8 ignore start */
+    log.dim(`Removed ${orphaned} orphaned collection definition${orphaned === 1 ? '' : 's'} from lockfile`);
+    /* v8 ignore stop */
+  }
+
   log.dim(`\nRun ${chalk.white('synap pull')} to restore, or ${chalk.white('synap list')} to browse.`);
+}
+
+const COLLECTION_PREFIX = '_collection::';
+
+/**
+ * Remove `_collection::Name` lock entries whose collection name is no longer
+ * referenced by any file entry. Returns the number of entries removed.
+ */
+export function cleanOrphanedCollections(lock: LockFile): number {
+  // Gather collection names still referenced by file entries
+  const referenced = new Set<string>();
+  for (const [key, entry] of Object.entries(lock)) {
+    if (key.startsWith(COLLECTION_PREFIX)) continue;
+    if (entry.collection) referenced.add(entry.collection);
+  }
+
+  let removed = 0;
+  for (const key of Object.keys(lock)) {
+    if (!key.startsWith(COLLECTION_PREFIX)) continue;
+    const name = key.slice(COLLECTION_PREFIX.length);
+    if (!referenced.has(name)) {
+      delete lock[key];
+      removed++;
+    }
+  }
+  return removed;
 }

@@ -18,6 +18,8 @@ import { doctorCommand }     from './commands/doctor.js';
 import { completionCommand } from './commands/completion.js';
 import { registerCommand }   from './commands/register.js';
 import { deregisterCommand } from './commands/deregister.js';
+import { installCommand }    from './commands/install.js';
+import { collectionCreateCommand } from './commands/collection.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -117,6 +119,24 @@ program
   .command('deregister')
   .description('Remove a registered repository from synap.config.json')
   .action(deregisterCommand);
+
+program
+  .command('install <source>')
+  .description('Install files from an asset collection')
+  .option('-y, --yes',           'Accept all resolved paths without prompting')
+  .option('--preset <name>',     'Override the development system preset for this install')
+  .option('-d, --dry-run',       'Preview what would be installed without writing files')
+  .action(installCommand);
+
+const collectionCmd = program
+  .command('collection')
+  .description('Author and manage asset collections');
+
+collectionCmd
+  .command('create <name>')
+  .description('Create a collection file from tracked files')
+  .option('--json', 'Output to stdout as JSON instead of writing a file')
+  .action(collectionCreateCommand);
 
 // Use parseAsync so that async action errors propagate as rejected promises.
 // Never call process.exit() — just let the event loop drain naturally.

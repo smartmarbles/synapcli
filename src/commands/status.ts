@@ -9,7 +9,7 @@ import { filterFiles } from '../lib/filter.js';
 import { fileExists, resolveLocalPath } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { ExitCode } from '../types.js';
-import type { StatusEntry, FileStatus } from '../types.js';
+import type { StatusEntry, FileStatus, LockFile } from '../types.js';
 
 export async function statusCommand(): Promise<void> {
   let config;
@@ -94,6 +94,9 @@ export async function statusCommand(): Promise<void> {
     return;
   }
 
+  // ── Collection-installed files ──────────────────────────────────────────
+  const collectionFiles = collectCollectionEntries(lock);
+
   // Group by status
   const groups: Record<FileStatus, StatusEntry[]> = {
     'changed':          allEntries.filter((e) => e.status === 'changed'),
@@ -146,6 +149,20 @@ export async function statusCommand(): Promise<void> {
     console.log();
   }
 
+  // ── Collection-installed files section ──────────────────────────────────
+  if (collectionFiles.size > 0) {
+    console.log(chalk.bold.blue('  Collections:'));
+    for (const [name, keys] of collectionFiles) {
+      /* v8 ignore start */
+      console.log(`    ${chalk.blue('▸')} ${chalk.white(name)} ${chalk.dim(`(${keys.length} file${keys.length === 1 ? '' : 's'})`)}`);      
+      /* v8 ignore stop */
+      for (const key of keys) {
+        console.log(`      ${chalk.dim(key)}`);
+      }
+    }
+    console.log();
+  }
+
   // Summary line
   const changed  = groups.changed.length + groups['missing-locally'].length + groups['removed-upstream'].length;
   const pending  = groups['not-pulled'].length;
@@ -157,4 +174,22 @@ export async function statusCommand(): Promise<void> {
   } else {
     log.success('Everything is up to date.');
   }
+}
+
+/**
+ * Scan lock entries for files installed via collections.
+ * Returns a map of collection name → lock keys belonging to that collection.
+ */
+export function collectCollectionEntries(lock: LockFile): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const [key, entry] of Object.entries(lock)) {
+    if (!entry.collection) continue;
+    const list = map.get(entry.collection);
+    if (list) {
+      list.push(key);
+    } else {
+      map.set(entry.collection, [key]);
+    }
+  }
+  return map;
 }
