@@ -38,6 +38,8 @@ vi.mock('child_process', () => ({
   execSync: vi.fn(),
 }));
 
+vi.mock('../../lib/completionCache.js', () => ({ refreshCompletionCache: vi.fn().mockResolvedValue(undefined) }));
+
 vi.mock('../../utils/files.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils/files.js')>();
   return { ...actual };

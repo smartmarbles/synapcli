@@ -26,6 +26,8 @@ vi.mock('../../lib/sourcePrompt.js', () => ({
   promptSource: vi.fn(),
 }));
 
+vi.mock('../../lib/completionCache.js', () => ({ refreshCompletionCache: vi.fn().mockResolvedValue(undefined) }));
+
 import * as p                                   from '@clack/prompts';
 import { registerCommand }                       from '../../commands/register.js';
 import { promptSource }                          from '../../lib/sourcePrompt.js';

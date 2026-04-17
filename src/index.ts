@@ -26,8 +26,9 @@ const pkg = JSON.parse(
   readFileSync(join(__dirname, '../package.json'), 'utf8')
 ) as { version: string };
 
-// ── Hidden: called by shell completion scripts ─────────────────────────────
-// Checked before program.parse() so it exits immediately and silently
+// ── Hidden: programmatic completion lookup ─────────────────────────────────
+// Returns matching file paths from the completion cache.
+// Checked before program.parse() so it exits immediately and silently.
 const getCompIdx = process.argv.indexOf('--get-completions');
 if (getCompIdx !== -1) {
   const partial = process.argv[getCompIdx + 1] ?? '';

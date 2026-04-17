@@ -10,6 +10,7 @@ import { completionCommand } from './completion.js';
 import { isDirWritable } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
+import { refreshCompletionCache } from '../lib/completionCache.js';
 import { ExitCode } from '../types.js';
 import type { SynapConfig, SourceConfig } from '../types.js';
 
@@ -112,6 +113,11 @@ export async function initCommand(): Promise<void> {
       console.log(`  ${chalk.yellow('⚠')} ${w}`);
     }
   }
+
+  // ── Populate completion cache ──────────────────────────────────────────────
+  const cacheSpinner = ora('Fetching file list for tab completions…').start();
+  await refreshCompletionCache();
+  cacheSpinner.succeed('File list cached for tab completions');
 
   // ── Shell completion ───────────────────────────────────────────────────────
   const installCompletion = await p.confirm({

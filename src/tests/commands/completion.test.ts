@@ -99,6 +99,22 @@ describe('completionCommand — print mode', () => {
     expect(printed).toContain('_synap_completions');
   });
 
+  const ALL_COMMANDS = ['init', 'pull', 'list', 'status', 'diff', 'update', 'delete', 'doctor', 'completion', 'register', 'deregister', 'install', 'collection'];
+
+  it.each(['bash', 'zsh', 'fish', 'powershell'])('"%s" script includes all CLI commands', async (shell) => {
+    await completionCommand(shell, {});
+    const printed = consoleSpy.mock.calls.map((c) => c[0]).join('\n');
+    for (const cmd of ALL_COMMANDS) {
+      expect(printed).toContain(cmd);
+    }
+  });
+
+  it.each(['bash', 'zsh', 'fish'])('"%s" script includes "collection create" subcommand', async (shell) => {
+    await completionCommand(shell, {});
+    const printed = consoleSpy.mock.calls.map((c) => c[0]).join('\n');
+    expect(printed).toContain('create');
+  });
+
   it('exits with code 1 for unknown shell in print mode', async () => {
     await expect(completionCommand('fish2000', {})).rejects.toThrow('exit:1');
   });
@@ -268,5 +284,46 @@ describe('completionCommand — install mode', () => {
 
     const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(output).toContain('source');
+  });
+
+  it('creates ~/.bash_profile bridge when no login profile files exist', async () => {
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+
+    await completionCommand('bash', { install: true });
+
+    const bashProfile = join(MOCK_HOME, '.bash_profile');
+    expect(existsSync(bashProfile)).toBe(true);
+    const content = readFileSync(bashProfile, 'utf8');
+    expect(content).toContain('. ~/.bashrc');
+    expect(content).toContain('SynapCLI');
+  });
+
+  it('does not create ~/.bash_profile when it already exists', async () => {
+    writeFileSync(join(MOCK_HOME, '.bash_profile'), '# existing profile\n');
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+
+    await completionCommand('bash', { install: true });
+
+    const content = readFileSync(join(MOCK_HOME, '.bash_profile'), 'utf8');
+    expect(content).toBe('# existing profile\n');
+  });
+
+  it('does not create ~/.bash_profile when ~/.profile exists', async () => {
+    writeFileSync(join(MOCK_HOME, '.profile'), '# existing profile\n');
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+
+    await completionCommand('bash', { install: true });
+
+    expect(existsSync(join(MOCK_HOME, '.bash_profile'))).toBe(false);
+  });
+
+  it('shows "automatically in new terminals" after bash install', async () => {
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+
+    await completionCommand('bash', { install: true });
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('automatically in new terminals');
+    expect(output).toContain('this session');
   });
 });

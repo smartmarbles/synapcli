@@ -63,8 +63,14 @@ Update `TESTPLAN.md` when adding new commands, changing coverage requirements, o
 
 Update `testplans/CROSSPLATFORM-TESTPLAN.md` when adding new OS/shell combinations to the test matrix, when new commands require smoke-test coverage, or when prerequisites change.
 
+Update `CONTRIBUTING.md` when adding new commands (update the project structure tree), adding new `lib/` modules, or changing the development workflow (build steps, test commands, or PR process).
+
 ## Implementation Workflow
 
 Implementation is not complete until **all source files have zero compiler or lint errors**. After writing or editing any source file, run `get_errors` on it and fix all issues before moving on.
 
 Resolve all errors in implementation files **before** writing unit tests. Writing tests against broken source code wastes effort and produces misleading failures.
+
+After adding or modifying source code (not just tests), run `npm run coverage` as the final validation step — `npm test` alone does not enforce the 100% coverage threshold. Fix any uncovered branches before considering the work complete.
+
+After tests pass, check whether `.github/workflows/cross-platform.yml` needs updating — e.g. when adding commands that require new smoke-test steps, changing exit codes, or altering CLI output that the workflow asserts on.

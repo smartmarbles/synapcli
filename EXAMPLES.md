@@ -6,7 +6,7 @@ One of the most powerful ways to use SynapCLI is to aggregate AI assets — agen
 
 ### Discovering sources
 
-Sites like **[skills.sh](https://skills.sh)** and community GitHub organisations (e.g. [awesome-copilot](https://github.com/awesome-copilot)) publish curated prompts, skill definitions, and instruction files that you can use directly. When you find one you want, copy the GitHub URL or the `owner/repo` slug shown on the page — `synap register` accepts either form and figures out the rest.
+Sites like **[skills.sh](https://skills.sh)** and community GitHub organisations (e.g. [awesome-copilot](https://github.com/github/awesome-copilot)) publish curated prompts, skill definitions, and instruction files that you can use directly. When you find one you want, copy the GitHub URL or the `owner/repo` slug shown on the page — `synap register` accepts either form and figures out the rest.
 
 ```
 https://github.com/anthropics/skills

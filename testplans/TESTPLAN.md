@@ -68,6 +68,8 @@ synap init
 **Expected:**
 - `synap.config.json` created in the current directory
 - Single-source flat format (not `sources` array)
+- Spinner shows "Fetching file list for tab completions…" → "✔ File list cached for tab completions"
+- Completion cache created at `~/.synap/completions.json` and `~/.synap/completions/<hash>.txt`
 - If token is configured: spinner shows "Token valid — authenticated as [username]"
 - If output directory is not writable: yellow warning shown
 - If no token configured: yellow warning shown
@@ -128,7 +130,7 @@ synap doctor
 - ✔ Git available
 - ✔ `synap.config.json` present
 - ✔ `synap.config.json` is valid JSON
-- ⚠ Completion cache not found (yellow — not an error)
+- ✔ Completion cache valid (1 project(s) cached) — green check (populated during init)
 - No lockfile check shown (file doesn't exist yet)
 - ✔ Config sources valid
 - ✔ GitHub token configured (if set)
@@ -179,7 +181,7 @@ synap list
 - Spinner shows while fetching
 - Files displayed with sizes
 - Tip shown at the bottom
-- Completion cache created at `~/.synap/completions.json`
+- Completion cache refreshed at `~/.synap/completions.json` (already created during init)
 
 ---
 
@@ -245,12 +247,12 @@ synap list nonexistent-folder/
 
 ---
 
-### 4.9 — Doctor after list (cache now exists)
+### 4.9 — Doctor after list (cache still valid)
 ```bash
 synap doctor
 ```
 **Expected:**
-- ✔ Completion cache valid (N project(s) cached) — green check, no longer yellow warning
+- ✔ Completion cache valid (N project(s) cached) — green check (was also valid after init)
 
 ---
 
@@ -556,6 +558,8 @@ synap register
 - Config migrated to `sources` array format if it was single-source
 - New source appended
 - Config saved
+- Spinner shows \"Updating file list for tab completions\u2026\" \u2192 \"\u2714 File list cached for tab completions\"
+- Completion cache refreshed with files from all sources
 
 ---
 
@@ -1016,41 +1020,9 @@ synap update # verify nothing to update
 
 ---
 
-## Section 20 — Uninstall Cleanup
+## Section 20 — Install (Asset Collection)
 
-> Run this section last as it removes the global install.
-
-### 20.1 — Verify completion and cache exist before uninstall
-```bash
-cat $PROFILE   # should contain SynapCLI block
-cat ~/.synap/completions.json   # should exist
-```
-
----
-
-### 20.2 — Uninstall
-```bash
-npm uninstall -g synapcli
-```
-**Expected:**
-- "Removed SynapCLI completion from [profile path]" printed
-- "Removed SynapCLI cache directory ~/.synap" printed
-
----
-
-### 20.3 — Verify cleanup
-```bash
-cat $PROFILE   # SynapCLI block should be gone
-ls ~/.synap    # directory should not exist
-synap --version   # should fail — command not found
-```
-**Expected:** All three verify the tool was fully removed.
-
----
-
-## Section 21 — Install (Asset Collection)
-
-### 21.1 — Install from a local collection file
+### 20.1 — Install from a local collection file
 Create a test asset collection and install it:
 ```bash
 cat > test.collection.json << 'EOF'
@@ -1065,10 +1037,11 @@ synap install ./test.collection.json --yes
 - `_collection::Test Kit` definition entry in lockfile with `origin` and `pathOverrides`
 - Preset defaults to `copilot` (since `--yes` was used and no preset set)
 - `synap.config.json` gains `"preset": "copilot"`
+- Spinner shows "Updating file list for tab completions…" → "✔ File list cached for tab completions"
 
 ---
 
-### 21.2 — Install with explicit preset
+### 20.2 — Install with explicit preset
 ```bash
 synap install ./test.collection.json --yes --preset claude
 ```
@@ -1078,7 +1051,7 @@ synap install ./test.collection.json --yes --preset claude
 
 ---
 
-### 21.3 — Install dry run
+### 20.3 — Install dry run
 ```bash
 synap install ./test.collection.json --dry-run
 ```
@@ -1089,7 +1062,7 @@ synap install ./test.collection.json --dry-run
 
 ---
 
-### 21.4 — Install with interactive output override
+### 20.4 — Install with interactive output override
 ```bash
 synap install ./test.collection.json
 ```
@@ -1101,7 +1074,7 @@ When prompted for output directory, enter a custom path (e.g. `custom/dir`).
 
 ---
 
-### 21.5 — Install from GitHub shorthand
+### 20.5 — Install from GitHub shorthand
 ```bash
 synap install org/repo/react-kit.collection.json --yes
 ```
@@ -1112,7 +1085,7 @@ synap install org/repo/react-kit.collection.json --yes
 
 ---
 
-### 21.6 — Install with invalid preset
+### 20.6 — Install with invalid preset
 ```bash
 synap install ./test.collection.json --preset bogus
 ```
@@ -1120,11 +1093,43 @@ synap install ./test.collection.json --preset bogus
 
 ---
 
-### 21.7 — Install with missing collection file
+### 20.7 — Install with missing collection file
 ```bash
 synap install ./nonexistent.json
 ```
 **Expected:** Error: file not found. Exits with code 2 (ConfigError).
+
+---
+
+## Section 21 — Uninstall Cleanup
+
+> Run this section last as it removes the global install.
+
+### 21.1 — Verify completion and cache exist before uninstall
+```bash
+cat $PROFILE   # should contain SynapCLI block
+cat ~/.synap/completions.json   # should exist
+```
+
+---
+
+### 21.2 — Uninstall
+```bash
+npm uninstall -g synapcli
+```
+**Expected:**
+- "Removed SynapCLI completion from [profile path]" printed
+- "Removed SynapCLI cache directory ~/.synap" printed
+
+---
+
+### 21.3 — Verify cleanup
+```bash
+cat $PROFILE   # SynapCLI block should be gone
+ls ~/.synap    # directory should not exist
+synap --version   # should fail — command not found
+```
+**Expected:** All three verify the tool was fully removed.
 
 ---
 

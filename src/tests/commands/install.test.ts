@@ -28,6 +28,8 @@ vi.mock('../../utils/progress.js', () => ({
   SynapProgress: class { tick = vi.fn(); stop = vi.fn(); },
 }));
 
+vi.mock('../../lib/completionCache.js', () => ({ refreshCompletionCache: vi.fn().mockResolvedValue(undefined) }));
+
 // ── Imports ───────────────────────────────────────────────────────────────────
 
 import * as p from '@clack/prompts';

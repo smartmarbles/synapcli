@@ -36,15 +36,15 @@ Run the full plan once per cell you want to cover:
 | 1 | Install + version | npm global install, PATH resolution, ESM entry point |
 | 2 | Doctor (no config) | `git --version` child_process, Node version check, file existence, exit codes |
 | 3 | Init | Interactive prompts (TTY), config file writing, `os.homedir()` |
-| 4 | List | GitHub API (fetch/undici), terminal formatting/colours, completion cache write (`~/.synap/`) |
+| 4 | List | GitHub API (fetch/undici), terminal formatting/colours, completion cache refresh |
 | 5 | Pull | File download + write, lockfile creation, path separators |
 | 6 | Pull with postpull hook | `execSync` hook in native shell, OS-specific command syntax |
 | 7 | Status | Lockfile read, local file existence check |
 | 8 | Error exit code | `process.exitCode` propagation (Windows libuv regression guard) |
 | 9 | Register --from | Collection file parsing, config merge, backup, `--yes` non-interactive flag |
 | 10 | Completion install | Shell detection, profile path resolution, script append |
-| 11 | Uninstall cleanup | Profile block removal, `~/.synap/` cache deletion |
-| 12 | Install (asset collection) | Collection file parsing, preset remapping, file download + write, lockfile write |
+| 11 | Install (asset collection) | Collection file parsing, preset remapping, file download + write, lockfile write |
+| 12 | Uninstall cleanup | Profile block removal, `~/.synap/` cache deletion |
 
 ---
 
@@ -98,14 +98,20 @@ Walk through the wizard:
 **Expected:**
 - Interactive prompts render correctly (no garbled characters)
 - `synap.config.json` created in the current directory
+- Spinner shows "Fetching file list for tab completions…" → "✔ File list cached for tab completions"
+- Completion cache created at `~/.synap/completions.json` and `~/.synap/completions/<hash>.txt`
 
 **Verify:**
 ```bash
 cat synap.config.json       # bash/zsh/fish
 Get-Content synap.config.json  # PowerShell
+
+# Verify completion cache was populated during init (before list is ever run)
+ls ~/.synap/completions.json ~/.synap/completions/*.txt   # bash/zsh/fish
+Test-Path "$env:USERPROFILE\.synap\completions.json"      # PowerShell → True
 ```
 
-**What this proves:** TTY/interactive prompts work, file writing with correct path separators.
+**What this proves:** TTY/interactive prompts work, file writing with correct path separators, GitHub API works for cache population.
 
 ---
 
@@ -116,7 +122,7 @@ synap list
 **Expected:**
 - Spinner animates while fetching
 - Files listed with sizes
-- Completion cache created at `~/.synap/completions.json`
+- Completion cache refreshed at `~/.synap/completions.json` (already created during init)
 
 **Verify cache:**
 ```bash
@@ -221,11 +227,22 @@ echo $LASTEXITCODE          # PowerShell
 ### 9 — Register --from (collection import)
 
 Create a collection file and import it:
+
+**bash/zsh/fish:**
 ```bash
 cat > test.collection.json << 'EOF'
 {"sources":[{"name":"Imported","repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".synap-imported"}]}
 EOF
+```
 
+**PowerShell:**
+```powershell
+@'
+{"sources":[{"name":"Imported","repo":"smartmarbles/synapcli","branch":"main","remotePath":"templates","localOutput":".synap-imported"}]}
+'@ | Set-Content test.collection.json
+```
+
+```bash
 synap register --from ./test.collection.json --yes
 ```
 
@@ -271,7 +288,46 @@ Tab completion should suggest commands/filenames.
 
 ---
 
-### 11 — Uninstall cleanup
+### 11 — Install (asset collection)
+
+Create an asset collection file and install it:
+
+**bash/zsh/fish:**
+```bash
+cat > test-assets.collection.json << 'EOF'
+{"name":"Test Kit","assets":[{"repo":"smartmarbles/synapcli","branch":"main","path":"templates/sync-agents.yml","defaultOutput":".github/workflows"}]}
+EOF
+```
+
+**PowerShell:**
+```powershell
+@'
+{"name":"Test Kit","assets":[{"repo":"smartmarbles/synapcli","branch":"main","path":"templates/sync-agents.yml","defaultOutput":".github/workflows"}]}
+'@ | Set-Content test-assets.collection.json
+```
+
+```bash
+synap install ./test-assets.collection.json --yes
+```
+
+**Expected:**
+- File downloaded to `.github/workflows/sync-agents.yml`
+- Lockfile entry created with `collection: "Test Kit"`
+- `_collection::Test Kit` definition entry in lockfile
+- Preset defaulted to `copilot` and saved to config
+
+**Verify:**
+```bash
+cat synap.lock.json         # should contain _collection::Test Kit entry
+cat synap.config.json       # should contain "preset": "copilot"
+ls .github/workflows/sync-agents.yml  # file should exist
+```
+
+**What this proves:** Asset collection parsing, preset resolution, GitHub API download, file write with directory creation, lockfile collection tracking, cross-platform path handling.
+
+---
+
+### 12 — Uninstall cleanup
 ```bash
 npm uninstall -g synapcli
 ```
@@ -297,34 +353,6 @@ synap --version             # should fail — command not found
 
 ---
 
-### 12 — Install (asset collection)
-
-Create an asset collection file and install it:
-```bash
-cat > test-assets.collection.json << 'EOF'
-{"name":"Test Kit","assets":[{"repo":"smartmarbles/synapcli","branch":"main","path":"templates/sync-agents.yml","defaultOutput":".github/workflows"}]}
-EOF
-
-synap install ./test-assets.collection.json --yes
-```
-
-**Expected:**
-- File downloaded to `.github/workflows/sync-agents.yml`
-- Lockfile entry created with `collection: "Test Kit"`
-- `_collection::Test Kit` definition entry in lockfile
-- Preset defaulted to `copilot` and saved to config
-
-**Verify:**
-```bash
-cat synap.lock.json         # should contain _collection::Test Kit entry
-cat synap.config.json       # should contain "preset": "copilot"
-ls .github/workflows/sync-agents.yml  # file should exist
-```
-
-**What this proves:** Asset collection parsing, preset resolution, GitHub API download, file write with directory creation, lockfile collection tracking, cross-platform path handling.
-
----
-
 ## Quick-Reference Results Template
 
 Copy this table and fill it in per environment:
@@ -341,8 +369,8 @@ Copy this table and fill it in per environment:
 | 8 | Error exit code | | | | |
 | 9 | Register --from | | | | |
 | 10 | Completion install | | | | |
-| 11 | Uninstall cleanup | | | | |
-| 12 | Install (asset collection) | | | | |
+| 11 | Install (asset collection) | | | | |
+| 12 | Uninstall cleanup | | | | |
 
 ---
 
@@ -369,7 +397,7 @@ See [TESTPLAN.md](TESTPLAN.md) for exhaustive coverage of every command and flag
 
 ## Automated CI Coverage
 
-Tests 1–2 and 4–9 and 12 run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every push to main, on every release, and on manual dispatch. Test 3 (Init) is skipped in CI because it requires interactive TTY prompts — the workflow seeds config programmatically instead. The workflow covers:
+Tests 1–2 and 4–9 and 11 run automatically via [`.github/workflows/cross-platform.yml`](.github/workflows/cross-platform.yml) on every push to main, on every release, and on manual dispatch. Test 3 (Init) is skipped in CI because it requires interactive TTY prompts — the workflow seeds config programmatically instead. The workflow covers:
 
 | OS | Shell |
 |---|---|

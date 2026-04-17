@@ -12,6 +12,7 @@ import { writeFile } from '../utils/files.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
 import { SynapProgress } from '../utils/progress.js';
+import { refreshCompletionCache } from '../lib/completionCache.js';
 import { ExitCode } from '../types.js';
 import type { InstallOptions, CollectionAsset, LockFile } from '../types.js';
 
@@ -237,6 +238,11 @@ export async function installCommand(
   };
 
   saveLock(lock);
+
+  // ── Update completion cache ─────────────────────────────────────────────
+  const cacheSpinner = ora('Updating file list for tab completions…').start();
+  await refreshCompletionCache();
+  cacheSpinner.succeed('File list cached for tab completions');
 
   // ── Summary ─────────────────────────────────────────────────────────────
   console.log();

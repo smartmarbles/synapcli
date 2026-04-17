@@ -6,6 +6,7 @@ import { promptSource } from '../lib/sourcePrompt.js';
 import {
   parseCollectionOrigin, loadCollection, checkDuplicates, backupConfig,
 } from '../lib/collection.js';
+import { refreshCompletionCache } from '../lib/completionCache.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
 import { ExitCode } from '../types.js';
@@ -177,6 +178,10 @@ async function importFromCollection(
     /* v8 ignore stop */
   }
 
+  const cacheSpinner = ora('Updating file list for tab completions…').start();
+  await refreshCompletionCache();
+  cacheSpinner.succeed('File list cached for tab completions');
+
   p.outro(chalk.green('Config updated'));
 }
 
@@ -253,5 +258,7 @@ async function interactiveRegister(config: SynapConfig): Promise<void> {
 
   p.outro(chalk.green('Config updated'));
 
-  log.dim(`\nRun ${chalk.white('synap list')} to browse all files across your registered sources.`);
+  const cacheSpinner = ora('Updating file list for tab completions…').start();
+  await refreshCompletionCache();
+  cacheSpinner.succeed('File list cached for tab completions');
 }

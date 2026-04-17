@@ -11,18 +11,34 @@ import { log } from '../utils/logger.js';
 const SCRIPTS: Record<string, string> = {
   bash: `
 # SynapCLI bash completion
+bind 'set show-all-if-ambiguous on' 2>/dev/null
+
 _synap_completions() {
   local cur="\${COMP_WORDS[COMP_CWORD]}"
   local cmd="\${COMP_WORDS[1]}"
 
   case "$cmd" in
     pull|update|diff|delete)
-      local files
-      files=$(synap --get-completions "$cur" 2>/dev/null)
-      COMPREPLY=($(compgen -W "$files" -- "$cur"))
+      # Cache the cwd hash — recompute only when the directory changes
+      if [[ "$_synap_cached_cwd" != "$PWD" ]]; then
+        _synap_cached_cwd="$PWD"
+        _synap_cached_hash=$(printf '%s' "$PWD" | md5sum 2>/dev/null | cut -d' ' -f1)
+        [ -z "$_synap_cached_hash" ] && _synap_cached_hash=$(printf '%s' "$PWD" | md5 -q 2>/dev/null)
+      fi
+      local cache_file="$HOME/.synap/completions/\${_synap_cached_hash}.txt"
+      if [ -f "$cache_file" ]; then
+        local IFS=$'\\n'
+        COMPREPLY=($(grep -Fi -- "$cur" "$cache_file" 2>/dev/null))
+        if [ \${#COMPREPLY[@]} -gt 20 ]; then
+          COMPREPLY+=("# \${#COMPREPLY[@]} results — narrow your search")
+        fi
+      fi
+      ;;
+    collection)
+      COMPREPLY=($(compgen -W "create" -- "$cur"))
       ;;
     *)
-      COMPREPLY=($(compgen -W "init pull list status diff update delete doctor completion" -- "$cur"))
+      COMPREPLY=($(compgen -W "init pull list status diff update delete doctor completion register deregister install collection" -- "$cur"))
       ;;
   esac
 }
@@ -36,9 +52,20 @@ _synap() {
 
   case "$cmd" in
     pull|update|diff|delete)
-      local -a files
-      files=($(synap --get-completions "\${words[-1]}" 2>/dev/null))
-      compadd -a files
+      local hash
+      hash=$(printf '%s' "$PWD" | md5sum 2>/dev/null | cut -d' ' -f1)
+      [ -z "$hash" ] && hash=$(printf '%s' "$PWD" | md5 -q 2>/dev/null)
+      local cache_file="$HOME/.synap/completions/\${hash}.txt"
+      if [ -f "$cache_file" ]; then
+        local -a files
+        files=("\${(@f)$(grep -Fi -- "\${words[-1]}" "$cache_file" 2>/dev/null)}")
+        compadd -a files
+      fi
+      ;;
+    collection)
+      local -a subcmds
+      subcmds=('create:Create a collection file from tracked files')
+      _describe 'subcommand' subcmds
       ;;
     *)
       local -a cmds
@@ -52,6 +79,10 @@ _synap() {
         'delete:Delete tracked files from disk'
         'doctor:Validate your setup'
         'completion:Output or install shell tab completion'
+        'register:Add repositories to config'
+        'deregister:Remove a repository from config'
+        'install:Install files from an asset collection'
+        'collection:Author and manage asset collections'
       )
       _describe 'command' cmds
       ;;
@@ -65,29 +96,51 @@ compdef _synap synap
 function __synap_file_completions
     set -l cmd (commandline -opc)[2]
     if contains -- $cmd pull update diff delete
-        synap --get-completions (commandline -ct) 2>/dev/null
+        set -l hash
+        if command -q md5sum
+            set hash (printf '%s' $PWD | md5sum | cut -d' ' -f1)
+        else if command -q md5
+            set hash (printf '%s' $PWD | md5 -q)
+        end
+        if test -n "$hash"
+            set -l cache_file "$HOME/.synap/completions/$hash.txt"
+            if test -f $cache_file
+                grep -Fi -- (commandline -ct) $cache_file 2>/dev/null
+            end
+        end
     end
 end
 
 # Subcommands
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'init'       -d 'Bootstrap SynapCLI config'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'pull'       -d 'Fetch files from remote repo'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'list'       -d 'List available files'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'status'     -d 'Show sync status'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'diff'       -d 'Show upstream changes'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'update'     -d 'Pull only changed files'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'delete'     -d 'Delete tracked files'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'doctor'     -d 'Validate your setup'
-complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion' \\
-  -a 'completion' -d 'Install shell completion'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'init'        -d 'Bootstrap SynapCLI config'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'pull'        -d 'Fetch files from remote repo'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'list'        -d 'List available files'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'status'      -d 'Show sync status'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'diff'        -d 'Show upstream changes'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'update'      -d 'Pull only changed files'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'delete'      -d 'Delete tracked files'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'doctor'      -d 'Validate your setup'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'completion'  -d 'Install shell completion'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'register'    -d 'Add repositories to config'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'deregister'  -d 'Remove a repository from config'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'install'     -d 'Install files from an asset collection'
+complete -c synap -f -n 'not __fish_seen_subcommand_from init pull list status diff update delete doctor completion register deregister install collection' \\
+  -a 'collection'  -d 'Author and manage asset collections'
+
+# collection subcommands
+complete -c synap -f -n '__fish_seen_subcommand_from collection' -a 'create' -d 'Create a collection file'
 
 # Dynamic file name completions
 complete -c synap -f -n '__fish_seen_subcommand_from pull update diff delete' \\
@@ -105,8 +158,6 @@ function _SynapGetCompletions {
     $cwd   = (Get-Location).Path
     $entry = $json.PSObject.Properties.Item($cwd)
     if (-not $entry) { return @() }
-    $cachedAt = [datetime]::Parse($entry.Value.cachedAt).ToUniversalTime()
-    if (([datetime]::UtcNow - $cachedAt).TotalMinutes -gt 10) { return @() }
     $lower = $wordToComplete.ToLower()
     return $entry.Value.files | Where-Object {
       $filename = ($_ -split '/')[-1]
@@ -117,30 +168,14 @@ function _SynapGetCompletions {
   }
 }
 
-if ($PSVersionTable.PSVersion.Major -ge 7) {
-  Register-ArgumentCompleter -Native -CommandName synap -ScriptBlock {
-    param($wordToComplete, $commandAst, $cursorPosition)
-    $tokens = $commandAst.ToString() -split '\\s+'
-    $cmd = if ($tokens.Count -gt 1) { $tokens[1] } else { '' }
+$global:_synapOriginalTabExpansion2 = $function:TabExpansion2
+function global:TabExpansion2 {
+  param($inputScript, $cursorColumn, $options)
+  $tokens = $inputScript.TrimStart() -split '\\s+'
+  if ($tokens[0] -eq 'synap' -and $tokens.Count -ge 2) {
+    $wordToComplete = if ($inputScript.EndsWith(' ')) { '' } else { $tokens[-1] }
+    $cmd = $tokens[1]
     if ($cmd -in @('pull', 'update', 'diff', 'delete')) {
-      _SynapGetCompletions $wordToComplete | ForEach-Object {
-        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-      }
-    } else {
-      @('init','pull','list','status','diff','update','delete','doctor','completion','register','deregister') |
-        Where-Object { $_ -like "$wordToComplete*" } |
-        ForEach-Object {
-          [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-        }
-    }
-  }
-} else {
-  $global:_synapOriginalTabExpansion2 = $function:TabExpansion2
-  function global:TabExpansion2 {
-    param($inputScript, $cursorColumn, $options)
-    $tokens = $inputScript.TrimStart() -split '\\s+'
-    if ($tokens[0] -eq 'synap' -and $tokens.Count -ge 2) {
-      $wordToComplete = if ($inputScript.EndsWith(' ')) { '' } else { $tokens[-1] }
       $results = _SynapGetCompletions $wordToComplete
       if ($results) {
         $col = [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new()
@@ -148,17 +183,36 @@ if ($PSVersionTable.PSVersion.Major -ge 7) {
         $replStart = $cursorColumn - $wordToComplete.Length
         return [System.Management.Automation.CommandCompletion]::new($col, -1, $replStart, $wordToComplete.Length)
       }
-      $empty = [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new()
-      return [System.Management.Automation.CommandCompletion]::new($empty, -1, $cursorColumn, 0)
+    } elseif ($cmd -eq 'collection') {
+      $col = [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new()
+      @('create') | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+        $col.Add([System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_))
+      }
+      if ($col.Count -gt 0) {
+        $replStart = $cursorColumn - $wordToComplete.Length
+        return [System.Management.Automation.CommandCompletion]::new($col, -1, $replStart, $wordToComplete.Length)
+      }
+    } else {
+      $col = [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new()
+      @('init','pull','list','status','diff','update','delete','doctor','completion','register','deregister','install','collection') |
+        Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+          $col.Add([System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_))
+        }
+      if ($col.Count -gt 0) {
+        $replStart = $cursorColumn - $wordToComplete.Length
+        return [System.Management.Automation.CommandCompletion]::new($col, -1, $replStart, $wordToComplete.Length)
+      }
     }
-    if ($global:_synapOriginalTabExpansion2) {
-      return & $global:_synapOriginalTabExpansion2 $inputScript $cursorColumn $options
-    }
-    return [System.Management.Automation.CommandCompletion]::new(
-      [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new(),
-      -1, $cursorColumn, 0
-    )
+    $empty = [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new()
+    return [System.Management.Automation.CommandCompletion]::new($empty, -1, $cursorColumn, 0)
   }
+  if ($global:_synapOriginalTabExpansion2) {
+    return & $global:_synapOriginalTabExpansion2 $inputScript $cursorColumn $options
+  }
+  return [System.Management.Automation.CommandCompletion]::new(
+    [System.Collections.ObjectModel.Collection[System.Management.Automation.CompletionResult]]::new(),
+    -1, $cursorColumn, 0
+  )
 }
 `.trim(),
 };
@@ -291,6 +345,21 @@ export async function completionCommand(
 
   try {
     appendFileSync(configFile, '\n\n' + script + '\n', 'utf8');
+
+    // On systems where every terminal is a login shell (Git Bash / MINGW),
+    // ~/.bashrc is only sourced if ~/.bash_profile explicitly loads it.
+    // Create a minimal ~/.bash_profile bridge when none of the login-shell
+    // profile files exist, so completions work on the very next terminal.
+    if (chosenShell === 'bash') {
+      const bashProfile = join(homedir(), '.bash_profile');
+      const bashLogin   = join(homedir(), '.bash_login');
+      const profile     = join(homedir(), '.profile');
+      if (!existsSync(bashProfile) && !existsSync(bashLogin) && !existsSync(profile)) {
+        writeFileSync(bashProfile, '# Created by SynapCLI — load .bashrc for login shells\nif [ -f ~/.bashrc ]; then . ~/.bashrc; fi\n', 'utf8');
+        log.dim(`Created ${chalk.white('~/.bash_profile')} to source ~/.bashrc in login shells.`);
+      }
+    }
+
     p.outro(chalk.green('Completion installed!'));
 
     console.log();
@@ -299,11 +368,12 @@ export async function completionCommand(
     } else if (chosenShell === 'fish') {
       log.dim(`Restart fish or run: ${chalk.white(`source ~/.config/fish/config.fish`)}`);
     } else {
-      log.dim(`Restart your terminal or run: ${chalk.white(`source ${configFile}`)}`);
+      log.dim(`Completion will load automatically in new terminals.`);
+      log.dim(`To activate in this session: ${chalk.white(`source ${configFile}`)}`);
     }
 
     console.log();
-    log.dim(`Tip: Run ${chalk.white('synap list')} first to populate the completion cache.`);
+    log.dim(`Tip: Tab completion for file names works after running any command that fetches files (init, register, list, pull, update).`);
   } catch (err) {
     log.error(`Failed to write to ${configFile}: ${(err as Error).message}`);
     log.dim(`Try manually: synap completion ${chosenShell} >> ${configFile}`);

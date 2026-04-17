@@ -77,6 +77,8 @@ synapcli/
     │   ├── completion.ts         # synap completion
     │   ├── register.ts           # synap register
     │   ├── deregister.ts         # synap deregister
+    │   ├── install.ts            # synap install
+    │   ├── collection.ts         # synap collection
     │   └── uninstall.ts          # synap uninstall (cleanup helper)
     ├── lib/
     │   ├── github.ts             # GitHub API client (retry, rate limits)
@@ -84,7 +86,9 @@ synapcli/
     │   ├── filter.ts             # Glob pattern filtering
     │   ├── hooks.ts              # Post-pull hook runner
     │   ├── preview.ts            # Status preview and interactive selection
-    │   ├── completionCache.ts    # Tab completion cache (~/.synap/completions.json)
+    │   ├── completionCache.ts    # Tab completion cache (~/.synap/completions.json and completions/*.txt)
+    │   ├── collection.ts         # Collection file parsing and asset install logic
+    │   ├── presets.ts            # Development system preset definitions and path remapping
     │   ├── sourcePrompt.ts       # Shared source configuration wizard
     │   └── retry.ts              # Exponential backoff retry
     ├── utils/

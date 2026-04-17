@@ -3,6 +3,7 @@ dist/
 coverage/
 .env
 *.log
+docs/
 synap.lock.json
 synap.config.json
 # Do NOT ignore synap.lock.json — commit it

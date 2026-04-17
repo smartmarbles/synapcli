@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/@smartmarbles/synapcli.svg)](https://nodejs.org)
 
-A CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 20.12+ on the target machine. Supports multiple sources, lockfile-based diffing, tab completion, and more.
+A CLI tool for syncing files from a GitHub repository into any project, regardless of language or framework. Designed with AI-assisted development in mind — sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects — but works equally well for any files you want to distribute from a central source of truth. Requires only Node.js 20.12+ on the target machine. Supports multiple sources, lockfile-based change tracking, tab completion, postpull hooks, and CI/CD mode.
 
 ---
 
@@ -73,55 +73,63 @@ Generate a token at [github.com/settings/tokens](https://github.com/settings/tok
 
 ## Quick Start
 
+### Getting started
+
 ```bash
-# 1. Bootstrap config in your project (supports multiple repos from the start)
+# Create your config and register your first source
 synap init
 
-# 2. Validate your entire setup
+# Validate your setup end-to-end
 synap doctor
 
-# 3. Add another repository later
-synap register
-
-# 4. Remove a repository
-synap deregister
-
-# 5. Install a curated collection of files
-synap install react-kit.collection.json
-
-# 6. Browse available files in the remote repo
+# Browse available files in the remote repo
 synap list
+synap list skills                    # narrow to a subfolder
 
-# 6b. List files under a specific subfolder
-synap list skills
+# Pull all files (with preview + confirm)
+synap pull
+synap pull --interactive             # choose files from a checklist
+synap pull --ref v1.2.0 testing.instructions.md  # pull a specific file at a ref
+```
 
-# 7. See the sync status of all tracked files
+### Staying in sync
+
+```bash
+# See the status of every tracked file
 synap status
 
-# 8. Pull everything down
-synap pull
-
-# 9. Pull a specific file at a specific ref (branch, tag, or commit SHA)
-synap pull --ref v1.2.0 copilot-instructions<TAB>
-
-# 10. Pull interactively — choose files from a checklist
-synap pull --interactive
-
-# 11. See what changed upstream vs your local files
+# Review upstream changes line by line
 synap diff
 
-# 12. Pull only files that have changed
+# Pull only files that have changed
 synap update
-
-# 13. Delete a tracked file
-synap delete summarizer
-
-# 14. Create a collection file from your current tracked files
-synap collection create my-kit
-
-# 15. Install shell tab completion (only needed if skipped during init)
-synap completion --install
 ```
+
+### Managing sources and collections
+
+```bash
+# Add another source repository
+synap register
+synap register --from team.collection.json       # import from a collection file
+
+# Remove a source
+synap deregister
+
+# Install a curated set of individual files
+synap install react-kit.collection.json
+
+# Bundle your tracked files into a shareable collection
+synap collection create my-kit
+```
+
+### Cleanup
+
+```bash
+# Remove a tracked file from disk and the lockfile
+synap delete summarizer
+```
+
+> Shell tab completion is set up during `synap init`. To install it separately, run `synap completion --install`.
 
 > **Looking for a real-world multi-source example?** See [EXAMPLES.md](https://github.com/smartmarbles/synapcli/blob/main/EXAMPLES.md) — pulling Claude skills, Copilot instructions, and custom agents from community GitHub repos all at once.
 
@@ -130,7 +138,7 @@ synap completion --install
 ## Commands
 
 ### `synap init`
-Interactively create a `synap.config.json`. Supports registering multiple repositories in a single session. Validates your GitHub token on setup and offers to install shell tab completion.
+Interactively create a `synap.config.json`. Supports registering multiple repositories in a single session. Validates your GitHub token on setup, pre-populates the tab completion cache, and offers to install shell tab completion.
 
 ---
 
@@ -144,7 +152,7 @@ synap doctor
 ---
 
 ### `synap list [path]`
-List all files available in the configured remote repository. Optionally scope the listing to a subdirectory by passing a path argument — this is appended to the configured `remotePath`.
+List all files available in the configured remote repository. Optionally narrow the listing to a subdirectory by passing a path argument.
 
 ```bash
 synap list                          # human-readable output
@@ -228,7 +236,7 @@ synap delete --force            # skip confirmation prompt
 ---
 
 ### `synap completion [shell]`
-Output or install shell tab completion. Supports bash, zsh, fish, and PowerShell (including 5.1). The PowerShell script reads directly from the local cache file with no subprocess. Bash, zsh, and fish use a lightweight `synap --get-completions` subprocess call.
+Output or install shell tab completion. Supports bash, zsh, fish, and PowerShell (including 5.1). All shell scripts read directly from local cache files — no subprocess spawned on each tab press.
 
 ```bash
 synap completion --install      # interactive install (auto-detects your shell)
@@ -488,7 +496,7 @@ This gives you a chance to back up your changes or cancel before they are replac
 
 SynapCLI supports tab completion for file names on `pull`, `update`, `diff`, and `delete`. Completions are read from a local cache file (`~/.synap/completions.json`) — no network call on every tab press.
 
-The cache is populated automatically whenever you run `synap list`, `synap pull`, or `synap update`.
+The cache is populated automatically whenever you run `synap init`, `synap register`, `synap install`, `synap list`, `synap pull`, or `synap update`.
 
 ```bash
 synap pull co<TAB>       # completes to matching file names
@@ -507,7 +515,7 @@ synap delete summ<TAB>   # same
 
 **Not supported: Windows Command Prompt (cmd.exe)** — Command Prompt has no custom completion API. It only supports basic file path completion built into the OS and cannot be extended by third-party tools. If you are on Windows, use PowerShell or Git Bash instead — both are available in VS Code's integrated terminal.
 
-> **Git Bash note:** When installing via `synap completion --install`, select `bash`. The script will be appended to `~/.bashrc`. If completions don't appear after restarting Git Bash, add `source ~/.bashrc` to your `~/.bash_profile` — Git Bash sometimes loads `.bash_profile` instead of `.bashrc` on startup.
+> **Git Bash note:** When installing via `synap completion --install`, select `bash`. The script is appended to `~/.bashrc`, and a `~/.bash_profile` bridge is created automatically if none exists. If completions don't appear after restarting Git Bash and you already had a `~/.bash_profile` before installing, add `source ~/.bashrc` to it manually.
 
 **Install:**
 ```bash
@@ -607,6 +615,12 @@ This one token covers all repos listed in your `synap.config.json`, so no additi
 
 ---
 
+## Contributing
+
+Interested in contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, project structure, and how to submit a pull request.
+
+---
+
 ## How SynapCLI Compares
 
 ### vs GitHub Copilot CLI Plugins
@@ -650,10 +664,3 @@ SynapCLI is most valuable in these situations:
 **Cross-project configuration sync** — sharing ESLint configs, TypeScript configs, CI workflow templates, or any other boilerplate files that need to stay consistent across a portfolio of projects, with the ability to opt into updates on your own schedule rather than being forced by a package version bump.
 
 **Teams without monorepo infrastructure** — getting the benefits of shared, versioned files without the overhead of setting up and maintaining Turborepo, Nx, or a private npm registry.
-
-
----
-
-## Contributing
-
-Interested in contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, project structure, and how to submit a pull request.
