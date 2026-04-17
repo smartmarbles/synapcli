@@ -99,7 +99,7 @@ describe('previewAndConfirm', () => {
 
     it('exits when user declines confirmation', async () => {
       vi.mocked(p.confirm).mockResolvedValueOnce(false);
-      vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+      vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
         throw new Error(`exit:${code ?? 0}`);
       });
       await expect(
@@ -110,7 +110,7 @@ describe('previewAndConfirm', () => {
     it('exits when confirm prompt is cancelled', async () => {
       vi.mocked(p.isCancel).mockReturnValueOnce(true);
       vi.mocked(p.confirm).mockResolvedValueOnce(Symbol('cancel') as unknown as boolean);
-      vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+      vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
         throw new Error(`exit:${code ?? 0}`);
       });
       await expect(
@@ -158,6 +158,16 @@ describe('previewAndConfirm', () => {
     it('returns empty array when no files are selected', async () => {
       vi.mocked(p.multiselect).mockResolvedValueOnce([]);
       const result = await previewAndConfirm([makeItem('a.md')], { verb: 'Pull', interactive: true });
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty array when "Deselect all" sentinel is triggered', async () => {
+      const items = [makeItem('a.md'), makeItem('b.md')];
+      vi.mocked(p.multiselect).mockImplementationOnce(async (opts) => {
+        const sentinel = (opts as { options: { value: unknown }[] }).options[0].value;
+        return [sentinel, ...items] as unknown as PreviewFile[];
+      });
+      const result = await previewAndConfirm(items, { verb: 'Pull', interactive: true });
       expect(result).toEqual([]);
     });
   });

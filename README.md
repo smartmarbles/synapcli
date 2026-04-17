@@ -180,7 +180,7 @@ Download files from the remote repo to your local output directory. Shows a stat
 ```bash
 synap pull                      # pull all files (with preview + confirm)
 synap pull summarizer           # pull files matching "summarizer"
-synap pull --interactive        # choose files from a checklist
+synap pull --interactive        # choose files from a checklist (includes Select / Deselect All)
 synap pull --dry-run            # preview without writing
 synap pull --force              # overwrite without prompting
 synap pull --ref feat/v2        # pull from a specific branch
@@ -189,7 +189,7 @@ synap pull --ref a1b2c3d        # pull from a specific commit SHA
 synap pull --retry-failed       # retry only files that failed in the last run
 ```
 
-When multiple sources are registered, `pull` processes each one in sequence. The preview shows the source name as a label (e.g. `[Agents]`) and a progression counter (e.g. `(1/3)`) so you always know which source you're looking at. In interactive mode, deselecting all files or cancelling one source skips it and moves to the next — it no longer exits the entire process.
+When multiple sources are registered, `pull` processes each one in sequence. The preview shows the source name as a label (e.g. `[Agents]`) and a progression counter (e.g. `(1/3)`) so you always know which source you're looking at. In interactive mode, deselecting all files or cancelling one source skips it and moves to the next — it no longer exits the entire process. A **Select / Deselect All** toggle appears at the top of every checklist: checking it selects all files if not all are selected, or clears all if they are.
 
 ---
 
@@ -209,7 +209,7 @@ Pull only files whose upstream SHA has changed. Skips unchanged files entirely. 
 ```bash
 synap update                    # update all changed files (with preview + confirm)
 synap update summarizer         # update files matching "summarizer"
-synap update --interactive      # choose which changed files to update
+synap update --interactive      # choose which changed files to update (includes Select / Deselect All)
 synap update --force            # skip confirmation prompt
 ```
 
@@ -479,7 +479,7 @@ SynapCLI detects when you've edited a tracked file locally since the last pull. 
 
 This gives you a chance to back up your changes or cancel before they are replaced by the remote version.
 
-- In **interactive mode** (`--interactive`), locally modified files are labeled in the checklist so you can deselect them individually.
+- In **interactive mode** (`--interactive`), locally modified files are labeled in the checklist so you can deselect them individually. A **Select / Deselect All** toggle appears at the top of every checklist for quick bulk selection.
 - With **`--force`**, all prompts are skipped and files are overwritten without warning — use with caution.
 
 ---

@@ -333,6 +333,8 @@ synap pull --interactive
 ```
 **Expected:**
 - Multiselect checklist shown with all files pre-selected
+- First item is a **Select / Deselect All** toggle
+- Checking the toggle when all files are selected deselects all; checking when not all are selected selects all
 - Can deselect individual files with spacebar
 - Only selected files pulled after confirming
 
@@ -345,6 +347,7 @@ synap pull --interactive
 ```
 **Expected:**
 - Each source shown with its name as a label (e.g. `[Agents]`) and a progression counter (e.g. `(1/2)`)
+- First item is a **Select / Deselect All** toggle — use it to quickly clear all files for a source
 - Pressing Escape on one source skips it and moves to the next
 - Deselecting all files on one source skips it and moves to the next
 - The process does **not** exit until all sources have been processed
@@ -526,7 +529,7 @@ synap update --force
 echo "my local edit" >> <output-dir>/somefile.md
 synap update --interactive
 ```
-**Expected:** Multiselect checklist shows locally modified files with hint `locally modified — will be overwritten`. User can deselect them individually to preserve local changes.
+**Expected:** Multiselect checklist shows locally modified files with hint `locally modified — will be overwritten`. User can deselect them individually to preserve local changes. The **Select / Deselect All** toggle can also be used to quickly deselect all files.
 
 ---
 
@@ -1134,6 +1137,7 @@ synap collection create my-kit
 ```
 **Expected:**
 - Multiselect shows all tracked files with their default output directories
+- First item is a **Select / Deselect All** toggle
 - After selecting files and entering name/description, `my-kit.collection.json` is written
 - File contains valid JSON with `name`, `description` (if provided), and `assets[]`
 - Each asset has `repo`, `branch`, `path`, `defaultOutput`

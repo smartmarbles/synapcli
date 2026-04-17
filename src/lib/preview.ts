@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import * as p from '@clack/prompts';
 import { isCI } from '../utils/context.js';
+import { multiselectWithToggle } from '../utils/prompts.js';
 import { log } from '../utils/logger.js';
 import type { PreviewFile } from '../types.js';
 
@@ -37,7 +38,7 @@ export async function previewAndConfirm(
   // ── Interactive multiselect ───────────────────────────────────────────────
   if (interactive) {
     console.log();
-    const selected = await p.multiselect<PreviewFile>({
+    const selected = await multiselectWithToggle<PreviewFile>({
       message: `${prefix}Select files to ${verb.toLowerCase()} (↑↓ navigate, space toggle, enter confirm):`,
       options: items.map((item) => ({
         value: item,

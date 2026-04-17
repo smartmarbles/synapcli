@@ -1,5 +1,6 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
+import { multiselectWithToggle } from '../utils/prompts.js';
 import { loadConfig, saveConfig, migrateToMultiSource, loadLock, saveLock, CONFIG_FILE } from '../lib/config.js';
 import { log, fatal } from '../utils/logger.js';
 import { isCI } from '../utils/context.js';
@@ -32,7 +33,7 @@ export async function deregisterCommand(): Promise<void> {
   }
 
   // ── Select sources to remove ───────────────────────────────────────────────
-  const selected = await p.multiselect({
+  const selected = await multiselectWithToggle({
     message: 'Select sources to remove:',
     options: sources.map((s) => ({
       value: s.repo,

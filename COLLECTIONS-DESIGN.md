@@ -33,6 +33,7 @@ Collection name: React Development Kit
 Description: Curated assets for React development
 
 Select files to include:
+  ◻ Select / Deselect All
   ✔ acme/ai-agents :: skills/frontend-design/SKILL.md        → .github/skills
   ✔ acme/ai-agents :: instructions/react.instructions.md     → .github/instructions
   ✔ community/standards :: typescript.instructions.md         → .github/instructions

@@ -162,7 +162,7 @@ synap pull skills/skill-creator       # pulls the skill-creator skill from Claud
 synap pull testing.instructions.md    # pulls the testing instructions file
 ```
 
-Or use interactive mode to pick from a checklist. When multiple sources are registered, each source is shown with a label and a progression counter (e.g. `[Claude Skills] (1/4)`) — deselecting all files or pressing Escape on one source skips it and moves to the next:
+Or use interactive mode to pick from a checklist. Every checklist includes a **Select / Deselect All** toggle at the top — checking it selects all files if not all are ticked, or clears all if they are. When multiple sources are registered, each source is shown with a label and a progression counter (e.g. `[Claude Skills] (1/4)`) — deselecting all files or pressing Escape on one source skips it and moves to the next:
 
 ```bash
 synap pull --interactive

@@ -173,6 +173,25 @@ describe('collectionCreateCommand', () => {
 
   // ── Interactive mode ────────────────────────────────────────────────────
 
+  it('selects all files when "Select all" sentinel is triggered', async () => {
+    saveConfig(BASE_CONFIG, testDir);
+    saveLock(BASE_LOCK, testDir);
+
+    vi.mocked(p.multiselect).mockImplementationOnce(async (opts) => {
+      const sentinel = (opts as { options: { value: unknown }[] }).options[0].value;
+      return [sentinel] as unknown as string[];
+    });
+    vi.mocked(p.text)
+      .mockResolvedValueOnce('All Kit')
+      .mockResolvedValueOnce('Everything');
+
+    await collectionCreateCommand('all-kit');
+
+    const filePath = join(testDir, 'all-kit.collection.json');
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8'));
+    expect(parsed.assets).toHaveLength(3);
+  });
+
   it('creates a collection file interactively', async () => {
     saveConfig(BASE_CONFIG, testDir);
     saveLock(BASE_LOCK, testDir);

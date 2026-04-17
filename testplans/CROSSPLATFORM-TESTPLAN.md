@@ -24,7 +24,7 @@ Run the full plan once per cell you want to cover:
 
 - Node.js 20.12+
 - Git installed and on PATH
-- A public GitHub repo with a few files (e.g. `smartmarbles/synapcli-test-assets`)
+- A public GitHub repo with a few files (e.g. `smartmarbles/helm`)
 - SynapCLI built and linked: `npm run build && npm link`
 
 ---

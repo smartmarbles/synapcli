@@ -2,6 +2,7 @@ import { writeFileSync } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 import * as p from '@clack/prompts';
+import { multiselectWithToggle } from '../utils/prompts.js';
 import {
   loadConfig, loadLock, resolvedSources,
 } from '../lib/config.js';
@@ -94,7 +95,7 @@ export async function collectionCreateCommand(
   // ── Interactive mode ────────────────────────────────────────────────────
   p.intro(chalk.bold.cyan('  SynapCLI — Create Collection  '));
 
-  const selected = await p.multiselect({
+  const selected = await multiselectWithToggle({
     message: 'Select files to include',
     options: items.map((i) => ({
       value: i.key,

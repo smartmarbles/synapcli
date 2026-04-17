@@ -1,0 +1,180 @@
+﻿
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.4 [39m[90mC:/Users/cdels/sources/synapcli[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [31mΓ¥»[39m src/tests/prompts.test.ts [2m([22m[2m11 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 17[2mms[22m[39m
+       [32mΓ£ô[39m shows "Select all" when no initialValues are provided[32m 3[2mms[22m[39m
+       [32mΓ£ô[39m shows "Select all" when only some items are initially selected[32m 0[2mms[22m[39m
+       [32mΓ£ô[39m shows "Deselect all" when all items are initially selected[32m 0[2mms[22m[39m
+       [32mΓ£ô[39m does not include sentinel in the initialValues passed to p.multiselect[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m returns the items the user selected[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m passes the message through to p.multiselect[32m 2[2mms[22m[39m
+       [32mΓ£ô[39m passes required through to p.multiselect[32m 0[2mms[22m[39m
+       [32mΓ£ô[39m prepends sentinel so options has one extra entry[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m returns all items when sentinel is checked[32m 0[2mms[22m[39m
+       [32mΓ£ô[39m returns empty array when sentinel is checked[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m propagates the cancel symbol from p.multiselect[39m[32m 6[2mms[22m[39m
+ [31mΓ¥»[39m src/tests/preview.test.ts [2m([22m[2m16 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 28[2mms[22m[39m
+     [32mΓ£ô[39m returns empty array immediately when items list is empty[32m 4[2mms[22m[39m
+     [32mΓ£ô[39m returns all items when force=true, no prompts shown[32m 1[2mms[22m[39m
+     [32mΓ£ô[39m returns all items in CI mode without prompting[32m 0[2mms[22m[39m
+       [32mΓ£ô[39m shows new and changed file groups then returns items when confirmed[32m 2[2mms[22m[39m
+       [32mΓ£ô[39m includes label prefix in confirm message when label is provided[32m 3[2mms[22m[39m
+       [32mΓ£ô[39m includes source counter in confirm message when totalSources > 1[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m shows only new files section when all items are new[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m shows only changed files section when no items are new[32m 0[2mms[22m[39m
+       [32mΓ£ô[39m exits when user declines confirmation[32m 3[2mms[22m[39m
+       [32mΓ£ô[39m exits when confirm prompt is cancelled[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m returns the subset of files chosen in multiselect[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m includes label prefix in multiselect message when label is provided[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m includes source counter in multiselect message when totalSources > 1[32m 1[2mms[22m[39m
+[31m       [31m├ù[31m returns null when multiselect is cancelled[39m[32m 7[2mms[22m[39m
+       [32mΓ£ô[39m returns empty array when no files are selected[32m 1[2mms[22m[39m
+       [32mΓ£ô[39m returns empty array when "Deselect all" sentinel is triggered[32m 0[2mms[22m[39m
+ [31mΓ¥»[39m src/tests/commands/deregister.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 81[2mms[22m[39m
+     [32mΓ£ô[39m removes a source and cleans its lock entries[32m 11[2mms[22m[39m
+     [32mΓ£ô[39m downgrades to flat single-source format when one source remains[32m 4[2mms[22m[39m
+     [32mΓ£ô[39m preserves postpull hook when downgrading to flat format[32m 4[2mms[22m[39m
+     [32mΓ£ô[39m saves empty sources array when all sources are removed[32m 6[2mms[22m[39m
+     [32mΓ£ô[39m cancellation leaves config unchanged[32m 6[2mms[22m[39m
+     [32mΓ£ô[39m migrates single-source flat config to multi-source before deregistering[32m 4[2mms[22m[39m
+     [32mΓ£ô[39m exits with code 2 when config file is missing[32m 2[2mms[22m[39m
+     [32mΓ£ô[39m exits with code 2 in CI mode[32m 3[2mms[22m[39m
+[31m     [31m├ù[31m exits cleanly when multiselect is cancelled[39m[32m 13[2mms[22m[39m
+     [32mΓ£ô[39m exits cleanly when confirm prompt is cancelled[32m 5[2mms[22m[39m
+     [32mΓ£ô[39m warns when no sources are remaining after removal[32m 5[2mms[22m[39m
+     [32mΓ£ô[39m exits cleanly when config has no sources[32m 4[2mms[22m[39m
+     [32mΓ£ô[39m selects all sources when "Select all" sentinel is triggered[32m 8[2mms[22m[39m
+     [32mΓ£ô[39m keeps multi-source format when two or more sources remain[32m 5[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/uninstall.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 94[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/register.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 116[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/list.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 94[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/status.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 100[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/collection.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 139[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/completion.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 181[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/delete.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 132[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/install.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 158[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/update.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 113[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/pull.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 196[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/doctor.test.ts [2m([22m[2m25 tests[22m[2m)[22m[33m 368[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/config.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/github.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/files.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+@@ -1,1 +1,1 @@
+-# Old Content
+\ No newline at end of file
++# New Content
+\ No newline at end of file
+
+ [32mΓ£ô[39m src/tests/logger.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/init.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/progress.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+@@ -1,1 +1,1 @@
+-# Old
+\ No newline at end of file
++# New
+\ No newline at end of file
+
+ [32mΓ£ô[39m src/tests/filter.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/collection.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 73[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/diff.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/completionCache.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/presets.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/sourcePrompt.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/hooks.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/context.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/retry.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 5057[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m retries on failure and succeeds on second attempt [33m 1010[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m throws after exhausting all retries [33m 3028[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m calls onRetry callback with attempt number and error [33m 1015[2mms[22m[39m
+node.exe : 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\cdels\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m[1m[41m Failed Tests 3 
+[49m[22m[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[41m[1m FAIL [22m[49m src/tests/preview.test.ts[2m > 
+[22mpreviewAndConfirm[2m > [22minteractive mode[2m > [22mreturns null 
+when multiselect is cancelled
+[31m[1mAssertionError[22m: expected Symbol(cancel) to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+Symbol(cancel)
+
+[36m [2mΓ¥»[22m src/tests/preview.test.ts:[2m154:22[22m[39m
+    [90m152|[39m       
+vi.mocked(p.multiselect).mockResolvedValueOnce(Symbol('cancel') ΓÇª
+    [90m153|[39m       const result = await 
+previewAndConfirm([makeItem('a.md')], { verΓÇª
+    [90m154|[39m       
+[34mexpect[39m(result)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m155|[39m       [34mexpect[39m(p[33m.[39mcancel)[33m.[39m[34mto
+HaveBeenCalled[39m()[33m;[39m
+    [90m156|[39m     })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»Γ
+Ä»[1/3]ΓÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m src/tests/prompts.test.ts[2m > 
+[22mmultiselectWithToggle[2m > [22mcancellation[2m > [22mpropagates the 
+cancel symbol from p.multiselect
+[31m[1mAssertionError[22m: expected false to be true // Object.is 
+equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2mΓ¥»[22m src/tests/prompts.test.ts:[2m127:34[22m[39m
+    [90m125|[39m       vi[33m.[39m[34mmocked[39m(p[33m.[39misCancel)[3
+3m.[39m[34mmockReturnValueOnce[39m([35mtrue[39m)[33m;[39m
+    [90m126|[39m       const result = await multiselectWithToggle({ message: 
+'Pick', opΓÇª
+    [90m127|[39m       [34mexpect[39m(p[33m.[39m[34misCancel[39m(result
+))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                  [31m^[39m
+    [90m128|[39m     })[33m;[39m
+    [90m129|[39m   })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»Γ
+Ä»[2/3]ΓÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m src/tests/commands/deregister.test.ts[2m > 
+[22mderegisterCommand[2m > [22mexits cleanly when multiselect is cancelled
+[31m[1mAssertionError[22m: expected [Function] to throw error including 
+'exit:0' but got 'toRemove is not iterable'[39m
+
+Expected: [32m"exit:0"[39m
+Received: [31m"toRemove is not iterable"[39m
+
+[36m [2mΓ¥»[22m src/tests/commands/deregister.test.ts:[2m150:38[22m[39m
+    [90m148|[39m     
+vi.mocked(p.multiselect).mockResolvedValueOnce(Symbol('cancel') asΓÇª
+    [90m149|[39m
+    [90m150|[39m     [35mawait[39m [34mexpect[39m([34mderegisterCommand
+[39m())[33m.[39mrejects[33m.[39m[34mtoThrow[39m([32m'exit:0'[39m)[33m;
+[39m
+    [90m   |[39m                                      [31m^[39m
+    [90m151|[39m     [34mexpect[39m([34mloadConfig[39m(testDir)[33m.[39
+msources)[33m.[39m[34mtoHaveLength[39m([34m2[39m)[33m;[39m
+    [90m152|[39m   })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»Γ
+Ä»[3/3]ΓÄ»[22m[39m
+
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m26 passed[39m[22m[90m (29)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m475 passed[39m[22m[90m (478)[39m
+[2m   Start at [22m 17:16:59
+[2m   Duration [22m 5.73s[2m (transform 2.97s, setup 0ms, import 5.08s, tests 7.36s, environment 5ms)[22m
+

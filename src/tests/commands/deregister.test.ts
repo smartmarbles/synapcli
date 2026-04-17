@@ -34,7 +34,7 @@ beforeEach(() => {
   testDir = join(tmpdir(), `synap-deregister-${Date.now()}`);
   mkdirSync(testDir, { recursive: true });
   vi.spyOn(process, 'cwd').mockReturnValue(testDir);
-  vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+  vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
     throw new Error(`exit:${code ?? 0}`);
   });
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -176,6 +176,20 @@ describe('deregisterCommand', () => {
   it('exits cleanly when config has no sources', async () => {
     saveConfig({ sources: [] }, testDir);
     await expect(deregisterCommand()).rejects.toThrow('exit:0');
+  });
+
+  it('selects all sources when "Select all" sentinel is triggered', async () => {
+    saveConfig(MULTI_CONFIG, testDir);
+    vi.mocked(p.multiselect).mockImplementationOnce(async (opts) => {
+      const sentinel = (opts as { options: { value: unknown }[] }).options[0].value;
+      return [sentinel] as unknown as string[];
+    });
+    vi.mocked(p.confirm).mockResolvedValueOnce(true);
+
+    await deregisterCommand();
+
+    const config = loadConfig(testDir);
+    expect(config.sources).toHaveLength(0);
   });
 
   it('keeps multi-source format when two or more sources remain', async () => {

@@ -1,0 +1,96 @@
+﻿
+> @smartmarbles/synapcli@1.0.6 coverage
+> vitest run --coverage
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.4 [39m[90mC:/Users/cdels/sources/synapcli[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [32mΓ£ô[39m src/tests/prompts.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/preview.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/deregister.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 87[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/uninstall.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 105[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/status.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 119[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/register.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 156[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/list.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/collection.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 176[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/delete.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 164[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/update.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 138[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/completion.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 260[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/install.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 200[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/pull.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 249[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/doctor.test.ts [2m([22m[2m25 tests[22m[2m)[22m[33m 421[2mms[22m[39m
+@@ -1,1 +1,1 @@
+-# Old Content
+\ No newline at end of file
++# New Content
+\ No newline at end of file
+
+@@ -1,1 +1,1 @@
+-# Old
+\ No newline at end of file
++# New
+\ No newline at end of file
+
+ [32mΓ£ô[39m src/tests/commands/diff.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 78[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/collection.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/files.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/config.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/github.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/filter.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/logger.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/completionCache.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/progress.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/presets.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/hooks.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/sourcePrompt.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/commands/init.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/context.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/tests/retry.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 5043[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m retries on failure and succeeds on second attempt [33m 1005[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m throws after exhausting all retries [33m 3021[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m calls onRetry callback with attempt number and error [33m 1011[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m29 passed[39m[22m[90m (29)[39m
+[2m      Tests [22m [1m[32m478 passed[39m[22m[90m (478)[39m
+[2m   Start at [22m 17:18:17
+[2m   Duration [22m 5.71s[2m (transform 2.82s, setup 0ms, import 4.86s, tests 7.74s, environment 5ms)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |     100 |      100 |     100 |     100 |                   
+ commands          |     100 |      100 |     100 |     100 |                   
+  collection.ts    |     100 |      100 |     100 |     100 |                   
+  completion.ts    |     100 |      100 |     100 |     100 |                   
+  delete.ts        |     100 |      100 |     100 |     100 |                   
+  deregister.ts    |     100 |      100 |     100 |     100 |                   
+  diff.ts          |     100 |      100 |     100 |     100 |                   
+  doctor.ts        |     100 |      100 |     100 |     100 |                   
+  init.ts          |     100 |      100 |     100 |     100 |                   
+  install.ts       |     100 |      100 |     100 |     100 |                   
+  list.ts          |     100 |      100 |     100 |     100 |                   
+  pull.ts          |     100 |      100 |     100 |     100 |                   
+  register.ts      |     100 |      100 |     100 |     100 |                   
+  status.ts        |     100 |      100 |     100 |     100 |                   
+  uninstall.ts     |     100 |      100 |     100 |     100 |                   
+  update.ts        |     100 |      100 |     100 |     100 |                   
+ lib               |     100 |      100 |     100 |     100 |                   
+  collection.ts    |     100 |      100 |     100 |     100 |                   
+  ...etionCache.ts |     100 |      100 |     100 |     100 |                   
+  config.ts        |     100 |      100 |     100 |     100 |                   
+  filter.ts        |     100 |      100 |     100 |     100 |                   
+  github.ts        |     100 |      100 |     100 |     100 |                   
+  hooks.ts         |     100 |      100 |     100 |     100 |                   
+  presets.ts       |     100 |      100 |     100 |     100 |                   
+  preview.ts       |     100 |      100 |     100 |     100 |                   
+  retry.ts         |     100 |      100 |     100 |     100 |                   
+  sourcePrompt.ts  |     100 |      100 |     100 |     100 |                   
+ utils             |     100 |      100 |     100 |     100 |                   
+  context.ts       |     100 |      100 |     100 |     100 |                   
+  files.ts         |     100 |      100 |     100 |     100 |                   
+  logger.ts        |     100 |      100 |     100 |     100 |                   
+  progress.ts      |     100 |      100 |     100 |     100 |                   
+  prompts.ts       |     100 |      100 |     100 |     100 |                   
+-------------------|---------|----------|---------|---------|-------------------

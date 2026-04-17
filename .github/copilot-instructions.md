@@ -57,8 +57,14 @@ Other top-level directories: `scripts/` (npm lifecycle scripts), `templates/` (w
 
 ## Keeping Docs in Sync
 
-Update `README.md` when any of the following change: Node.js version requirement, installation steps, CLI commands or their flags/options, config file format (`synap.config.json`), or the overall purpose/workflow of the tool.
+Update `README.md` and `Examples.md`when any of the following change: Node.js version requirement, installation steps, CLI commands or their flags/options, config file format (`synap.config.json`), or the overall purpose/workflow of the tool.
 
 Update `TESTPLAN.md` when adding new commands, changing coverage requirements, or altering the test strategy for existing functionality.
 
 Update `testplans/CROSSPLATFORM-TESTPLAN.md` when adding new OS/shell combinations to the test matrix, when new commands require smoke-test coverage, or when prerequisites change.
+
+## Implementation Workflow
+
+Implementation is not complete until **all source files have zero compiler or lint errors**. After writing or editing any source file, run `get_errors` on it and fix all issues before moving on.
+
+Resolve all errors in implementation files **before** writing unit tests. Writing tests against broken source code wastes effort and produces misleading failures.
