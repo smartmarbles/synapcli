@@ -4,12 +4,12 @@
   "description": "Sync files from a GitHub repository into any project — built for AI-assisted development teams sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects.",
   "type": "module",
   "bin": {
-    "synap": "./dist/index.js"
+    "synap": "dist/index.js"
   },
   "main": "./dist/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/smartmarbles/synapcli.git"
+    "url": "git+https://github.com/smartmarbles/synapcli.git"
   },
   "homepage": "https://github.com/smartmarbles/synapcli#readme",
   "bugs": {
