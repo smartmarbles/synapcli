@@ -1,6 +1,6 @@
 {
   "name": "@smartmarbles/synapcli",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Sync files from a GitHub repository into any project — built for AI-assisted development teams sharing agent definitions, system prompts, instructions, coding standards, scripts, resources, and any other AI assets across a portfolio of projects.",
   "type": "module",
   "bin": {
@@ -26,7 +26,17 @@
     "prepublishOnly": "npm run build",
     "preuninstall": "node scripts/preuninstall.mjs"
   },
-  "keywords": ["cli", "agents", "prompts", "llm", "ai", "github", "sync", "copilot", "devtools"],
+  "keywords": [
+    "cli",
+    "agents",
+    "prompts",
+    "llm",
+    "ai",
+    "github",
+    "sync",
+    "copilot",
+    "devtools"
+  ],
   "author": "SmartMarbles.com",
   "license": "MIT",
   "dependencies": {
