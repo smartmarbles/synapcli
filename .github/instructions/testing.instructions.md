@@ -43,6 +43,8 @@ await expect(myCommand()).rejects.toThrow('exit:1');
 ## V8 Coverage
 
 Use `/* v8 ignore start */` / `/* v8 ignore stop */` blocks to suppress untestable branches (e.g. OS-specific paths, defensive exhaustive checks). **Never use `/* v8 ignore next N */`** — it suppresses line/statement coverage only, not branch coverage.
+- Always prefer `start/stop` blocks when you need to ignore branch coverage on `??`, `||`, `&&`, ternary operators
+- V8 branch coverage tracks at the bytecode level, independent of line-level ignoring
 
 ## Avoiding Unnecessary Tests
 
